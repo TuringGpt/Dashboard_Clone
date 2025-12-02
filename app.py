@@ -109,8 +109,8 @@ def load_session_data():
     if request.path.startswith('/static/') or request.path in ['static'] or request.path in PUBLIC_ROUTES or 'google' in request.path:
         return
 
-    if request.path in REDIRECT_ROUTES and not current_user.is_authenticated:
-        return redirect(url_for('index'))
+    # if request.path in REDIRECT_ROUTES and not current_user.is_authenticated:
+    #     return redirect(url_for('index'))
 
 ######################## AUTHENTICATION WITH GOOGLE ########################
 
@@ -149,10 +149,10 @@ def load_user(user_id):
 
 @app.route("/", strict_slashes=False)
 def index():
-    if current_user.is_authenticated:
+    # if current_user.is_authenticated:
         return render_template('main.html')
-    else:
-        return render_template('login.html')
+    # else:
+    #     return render_template('login.html')
 
 
 
