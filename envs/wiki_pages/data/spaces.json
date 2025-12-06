@@ -1,0 +1,222 @@
+{
+  "1": {
+    "space_id": "1",
+    "space_key": "KEY001",
+    "name": "Davis Group",
+    "description": "Private space for tracking personal goals and ideas.",
+    "type": "personal",
+    "status": "current",
+    "created_by": "30",
+    "created_at": "2023-02-18T17:28:00",
+    "updated_at": "2023-03-26T06:39:00"
+  },
+  "2": {
+    "space_id": "2",
+    "space_key": "KEY002",
+    "name": "Rasmussen LLC",
+    "description": "Central hub for team collaboration and project management.",
+    "type": "global",
+    "status": "current",
+    "created_by": "6",
+    "created_at": "2023-03-05T02:28:00",
+    "updated_at": "2023-07-23T05:31:00"
+  },
+  "3": {
+    "space_id": "3",
+    "space_key": "KEY003",
+    "name": "Pena, Marshall and Ramos",
+    "description": "Shared workspace for department coordination and initiatives.",
+    "type": "global",
+    "status": "current",
+    "created_by": "26",
+    "created_at": "2023-07-12T07:10:00",
+    "updated_at": "2023-10-24T22:40:00"
+  },
+  "4": {
+    "space_id": "4",
+    "space_key": "KEY004",
+    "name": "Stewart, Fischer and Ramos",
+    "description": "Private collaborative space for team coordination.",
+    "type": "personal",
+    "status": "current",
+    "created_by": "19",
+    "created_at": "2023-01-16T05:24:00",
+    "updated_at": "2023-01-16T17:40:00"
+  },
+  "5": {
+    "space_id": "5",
+    "space_key": "KEY005",
+    "name": "Johnson, Long and Elliott",
+    "description": "Personal workspace for individual project management and documentation.",
+    "type": "personal",
+    "status": "current",
+    "created_by": "10",
+    "created_at": "2023-04-19T22:46:00",
+    "updated_at": "2023-09-09T20:31:00"
+  },
+  "6": {
+    "space_id": "6",
+    "space_key": "KEY006",
+    "name": "Jefferson-Burke",
+    "description": "Global knowledge base for company-wide documentation and policies.",
+    "type": "global",
+    "status": "current",
+    "created_by": "48",
+    "created_at": "2023-02-18T09:13:00",
+    "updated_at": "2023-03-05T04:00:00"
+  },
+  "7": {
+    "space_id": "7",
+    "space_key": "KEY007",
+    "name": "Wood, Tran and Cooper",
+    "description": "Central hub for team collaboration and project management.",
+    "type": "global",
+    "status": "current",
+    "created_by": "4",
+    "created_at": "2023-03-22T01:03:00",
+    "updated_at": "2023-08-18T16:35:00"
+  },
+  "8": {
+    "space_id": "8",
+    "space_key": "KEY008",
+    "name": "James, Kerr and Evans",
+    "description": "Shared workspace for department coordination and initiatives.",
+    "type": "global",
+    "status": "current",
+    "created_by": "44",
+    "created_at": "2023-05-11T02:54:00",
+    "updated_at": "2023-06-27T05:32:00"
+  },
+  "9": {
+    "space_id": "9",
+    "space_key": "KEY009",
+    "name": "Miller-Williams",
+    "description": "Organization-wide communication and documentation center.",
+    "type": "global",
+    "status": "current",
+    "created_by": "40",
+    "created_at": "2023-03-02T12:07:00",
+    "updated_at": "2023-07-25T19:44:00"
+  },
+  "10": {
+    "space_id": "10",
+    "space_key": "KEY010",
+    "name": "Pierce-Tran",
+    "description": "Personal workspace for individual project management and documentation.",
+    "type": "personal",
+    "status": "current",
+    "created_by": "17",
+    "created_at": "2023-01-21T13:42:00",
+    "updated_at": "2023-06-20T08:15:00"
+  },
+  "11": {
+    "space_id": "11",
+    "space_key": "KEY011",
+    "name": "Sawyer Group",
+    "description": "Private space for tracking personal goals and ideas.",
+    "type": "personal",
+    "status": "current",
+    "created_by": "9",
+    "created_at": "2023-02-22T21:45:00",
+    "updated_at": "2023-05-14T05:01:00"
+  },
+  "12": {
+    "space_id": "12",
+    "space_key": "KEY012",
+    "name": "Pitts, Harvey and Allen",
+    "description": "Central hub for team collaboration and project management.",
+    "type": "global",
+    "status": "current",
+    "created_by": "1",
+    "created_at": "2023-06-21T20:19:00",
+    "updated_at": "2023-10-17T07:18:00"
+  },
+  "13": {
+    "space_id": "13",
+    "space_key": "KEY013",
+    "name": "Johnson-Diaz",
+    "description": "Shared workspace for department coordination and initiatives.",
+    "type": "global",
+    "status": "current",
+    "created_by": "33",
+    "created_at": "2023-04-28T19:36:00",
+    "updated_at": "2023-05-23T22:10:00"
+  },
+  "14": {
+    "space_id": "14",
+    "space_key": "KEY014",
+    "name": "Taylor Inc",
+    "description": "Organization-wide communication and documentation center.",
+    "type": "global",
+    "status": "current",
+    "created_by": "24",
+    "created_at": "2023-03-09T04:59:00",
+    "updated_at": "2023-06-06T07:55:00"
+  },
+  "15": {
+    "space_id": "15",
+    "space_key": "KEY015",
+    "name": "Smith, Garrison and Thomas",
+    "description": "Enterprise-wide collaborative space for cross-functional teams.",
+    "type": "global",
+    "status": "current",
+    "created_by": "43",
+    "created_at": "2023-03-14T05:28:00",
+    "updated_at": "2023-08-01T03:47:00"
+  },
+  "16": {
+    "space_id": "16",
+    "space_key": "KEY016",
+    "name": "Joseph, James and Harper",
+    "description": "Global knowledge base for company-wide documentation and policies.",
+    "type": "global",
+    "status": "current",
+    "created_by": "7",
+    "created_at": "2023-05-22T09:59:00",
+    "updated_at": "2023-06-17T14:15:00"
+  },
+  "17": {
+    "space_id": "17",
+    "space_key": "KEY017",
+    "name": "Bell PLC",
+    "description": "Central hub for team collaboration and project management.",
+    "type": "global",
+    "status": "current",
+    "created_by": "46",
+    "created_at": "2023-07-10T17:09:00",
+    "updated_at": "2023-09-18T02:47:00"
+  },
+  "18": {
+    "space_id": "18",
+    "space_key": "KEY018",
+    "name": "Lewis-Hunt",
+    "description": "Personal productivity hub for managing tasks and notes.",
+    "type": "personal",
+    "status": "current",
+    "created_by": "4",
+    "created_at": "2023-03-29T06:43:00",
+    "updated_at": "2023-06-04T23:14:00"
+  },
+  "19": {
+    "space_id": "19",
+    "space_key": "KEY019",
+    "name": "Collier-Gillespie",
+    "description": "Private collaborative space for team coordination.",
+    "type": "personal",
+    "status": "archived",
+    "created_by": "9",
+    "created_at": "2023-01-24T20:27:00",
+    "updated_at": "2023-04-04T21:27:00"
+  },
+  "20": {
+    "space_id": "20",
+    "space_key": "KEY020",
+    "name": "Turner, Hill and Brown",
+    "description": "Personal workspace for individual project management and documentation.",
+    "type": "personal",
+    "status": "archived",
+    "created_by": "36",
+    "created_at": "2023-06-13T08:10:00",
+    "updated_at": "2023-10-05T01:55:00"
+  }
+}
