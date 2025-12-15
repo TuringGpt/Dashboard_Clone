@@ -9,7 +9,7 @@ class ProcessPayment(Tool):
         employee_id: str,
         source_payslip_id: str,
         payment_method: str,
-        amount: float,
+        amount: Optional[float] = None,
         payment_id: Optional[str] = None,
         payment_date: Optional[str] = None,
         status: str = 'pending'
@@ -42,7 +42,7 @@ class ProcessPayment(Tool):
                 "error": "payment_method is required"
             })
         
-        if amount is None:
+        if payment_id is None and amount is None:
             return json.dumps({
                 "success": False,
                 "error": "amount is required"
@@ -118,7 +118,7 @@ class ProcessPayment(Tool):
                 "employee_id": employee_id,
                 "source_payslip_id": source_payslip_id,
                 "payment_method": payment_method,
-                "amount": str(amount),
+                "amount": amount,
                 "status": status,
                 "payment_date": payment_date if payment_date else None,
                 "created_at": timestamp,
@@ -173,7 +173,7 @@ class ProcessPayment(Tool):
                             "enum": ["pending", "completed", "failed"]
                         }
                     },
-                    "required": ["employee_id", "source_payslip_id", "payment_method", "amount"]
+                    "required": ["employee_id", "source_payslip_id", "payment_method"]
                 }
             }
         }

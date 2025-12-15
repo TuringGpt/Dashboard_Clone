@@ -55,13 +55,13 @@ class UpdateTimecard(Tool):
         
         # Update fields
         if hours_worked is not None:
-            timecard["hours_worked"] = str(hours_worked)
+            timecard["hours_worked"] = hours_worked
         if overtime_hours is not None:
-            timecard["overtime_hours"] = str(overtime_hours)
+            timecard["overtime_hours"] = overtime_hours
         if status is not None:
             timecard["status"] = status
         if payroll_variance_percent is not None:
-            timecard["payroll_variance_percent"] = str(payroll_variance_percent)
+            timecard["payroll_variance_percent"] = payroll_variance_percent
         if issue_field is not None:
             timecard["issue_field"] = issue_field
         

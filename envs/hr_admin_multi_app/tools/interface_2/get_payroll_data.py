@@ -93,7 +93,7 @@ class GetPayrollData(Tool):
                         }
                         
                     },
-                    "required": ["entity_type"]
+                    "required": ["entity_type", "filters"]
                 }
             }
         }

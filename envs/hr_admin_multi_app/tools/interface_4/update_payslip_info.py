@@ -51,7 +51,7 @@ class UpdatePayslipInfo(Tool):
         
         # Update fields
         if net_pay_value is not None:
-            payslip["net_pay_value"] = str(net_pay_value)
+            payslip["net_pay_value"] = net_pay_value
         if status is not None:
             payslip["status"] = status
         

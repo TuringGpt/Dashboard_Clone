@@ -60,7 +60,7 @@ class FindEmployeeDetails(Tool):
                 return json.dumps({"success": False, "error": "Employee found but department mismatch"})
             if name_key and normalize(record.get("full_name")) != name_key:
                 return json.dumps({"success": False, "error": "Employee found but name mismatch"})
-            if role_key not in {"admin", "non_admin"}:
+            if role_key and role_key not in {"admin", "non_admin"}:
                 return json.dumps({"success": False, "error": "role must be admin or non_admin"})
             if role_key and normalize(record.get("role")) != role_key:
                 return json.dumps({"success": False, "error": "Employee found but role mismatch"})

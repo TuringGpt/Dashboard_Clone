@@ -19,7 +19,7 @@ class UpdatePayslipStatus(Tool):
     def invoke(
         data: Dict[str, Any],
         payslip_id: str,
-        status: Optional[str] = None,
+        status: str,
     ) -> str:
         """
         Return a JSON string:

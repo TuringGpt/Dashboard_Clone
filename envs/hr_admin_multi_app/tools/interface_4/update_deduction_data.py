@@ -70,7 +70,7 @@ class UpdateDeductionData(Tool):
         
         # Update fields
         if amount is not None:
-            deduction["amount"] = str(amount)
+            deduction["amount"] = amount
         if deduction_date is not None:
             deduction["deduction_date"] = deduction_date
         if deduction_rule_id is not None:

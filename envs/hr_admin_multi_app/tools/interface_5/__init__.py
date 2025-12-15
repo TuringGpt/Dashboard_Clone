@@ -1,7 +1,7 @@
 from .approve_or_update_earning import ApproveOrUpdateEarning
 from .assign_deduction_to_employee import AssignDeductionToEmployee
 from .assign_earning_to_employee import AssignEarningToEmployee
-from .close_or_udpate_payroll_cycle import CloseOrUdpatePayrollCycle
+from .close_or_update_payroll_cycle import CloseOrUpdatePayrollCycle
 from .collect_benefit_plan_details import CollectBenefitPlanDetails
 from .create_checklist import CreateChecklist
 from .create_checklist_task import CreateChecklistTask
@@ -40,7 +40,7 @@ ALL_TOOLS_INTERFACE_5 = [
     ApproveOrUpdateEarning,
     AssignDeductionToEmployee,
     AssignEarningToEmployee,
-    CloseOrUdpatePayrollCycle,
+    CloseOrUpdatePayrollCycle,
     CollectBenefitPlanDetails,
     CreateChecklist,
     CreateChecklistTask,

@@ -11,8 +11,8 @@ class CreateChecklist(Tool):
     def invoke(
         data: Dict[str, Any],
         emp_id: str,
+        checklist_type: str,
         status: Optional[str] = "pending",
-        checklist_type: str = "",
     ) -> str:
         """
         Create a checklist tied to the employee.
@@ -47,8 +47,8 @@ class CreateChecklist(Tool):
             return json.dumps({"success": False, "error": "status must be pending or completed"})
 
         employee_status = str(employee.get("status", "")).strip().lower()
-        if employee_status not in {"active", "inactive"}:
-            return json.dumps({"success": False, "error": "Checklist creation allowed only for active or inactive employees"})
+        if employee_status not in {"active"}:
+            return json.dumps({"success": False, "error": "Checklist creation allowed only for active employees"})
 
         allowed_types = {"onboarding", "offboarding"}
         normalized_type = checklist_type.strip().lower() if isinstance(checklist_type, str) and checklist_type.strip() else ""
@@ -57,8 +57,8 @@ class CreateChecklist(Tool):
 
         if normalized_type == "onboarding" and employee_status != "active":
             return json.dumps({"success": False, "error": "Onboarding checklists require an active employee"})
-        if normalized_type == "offboarding" and employee_status != "inactive":
-            return json.dumps({"success": False, "error": "Offboarding checklists require an inactive employee"})
+        if normalized_type == "offboarding" and employee_status != "active":
+            return json.dumps({"success": False, "error": "Offboarding checklists require an active employee"})
 
         timestamp = "2025-11-16T23:59:00"
         checklist_id = generate_id(checklists)

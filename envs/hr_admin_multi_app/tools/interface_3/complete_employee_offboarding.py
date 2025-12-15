@@ -4,7 +4,7 @@ from typing import Any, Dict
 from tau_bench.envs.tool import Tool
 
 
-class CompleteOffboarding(Tool):
+class CompleteEmployeeOffboarding(Tool):
     @staticmethod
     def invoke(
         data: Dict[str, Any],
@@ -37,6 +37,8 @@ class CompleteOffboarding(Tool):
         employee_assets = data.get("employee_assets", {})
         finance_settlements = data.get("finance_settlements", {})
         contracts = data.get("contracts", {})
+        payslips = data.get("payslips", {})
+        payments = data.get("payments", {})
 
         # Validate employee exists
         if employee_id not in employees:
@@ -59,6 +61,8 @@ class CompleteOffboarding(Tool):
         if exit_case.get("exit_clearance_status") == "cleared":
             return json.dumps({"error": f"Exit case for employee '{employee_id}' is already completed"})
 
+        timestamp = "2025-11-16T23:59:00"
+
         # Find the offboarding checklist for this employee
         offboarding_checklist_id = None
         for checklist_id, checklist in checklists.items():
@@ -79,48 +83,51 @@ class CompleteOffboarding(Tool):
                         "status": task.get("status"),
                     })
 
-        if pending_tasks and not force_complete:
-            return json.dumps({
-                "error": f"Cannot complete offboarding. {len(pending_tasks)} tasks are still pending. "
-                "Use force_complete=True to override.",
-                "pending_tasks": pending_tasks,
-            })
+        # Auto-complete all pending tasks
+        if offboarding_checklist_id:
+            for task_id, task in checklist_tasks.items():
+                if task.get("checklist_id") == offboarding_checklist_id:
+                    task["status"] = "completed"
+                    task["last_updated"] = timestamp
 
-        # Check for unreturned assets
-        unreturned_assets = []
+        # Update all assets to returned status
         for asset_id, asset in employee_assets.items():
-            if asset.get("employee_id") == employee_id and asset.get("status") == "assigned":
-                unreturned_assets.append({
-                    "asset_id": asset_id,
-                    "item_name": asset.get("item_name"),
-                    "status": asset.get("status"),
-                })
+            if asset.get("employee_id") == employee_id:
+                asset["status"] = "returned"
+                asset["last_updated"] = timestamp
 
-        if unreturned_assets and not force_complete:
+        # Check payment and payslip status
+        payment_status_issues = []
+        payslip_status_issues = []
+        
+        for payslip_id, payslip in payslips.items():
+            if payslip.get("employee_id") == employee_id:
+                if payslip.get("status") not in ["released", "updated"]:
+                    payslip_status_issues.append({
+                        "payslip_id": payslip_id,
+                        "status": payslip.get("status"),
+                    })
+
+        for payment_id, payment in payments.items():
+            if payment.get("employee_id") == employee_id:
+                if payment.get("status") != "completed":
+                    payment_status_issues.append({
+                        "payment_id": payment_id,
+                        "status": payment.get("status"),
+                    })
+
+        if (payslip_status_issues or payment_status_issues) and not force_complete:
             return json.dumps({
-                "error": f"Cannot complete offboarding. {len(unreturned_assets)} assets not returned. "
-                "Use force_complete=True to override.",
-                "unreturned_assets": unreturned_assets,
+                "error": "Cannot complete offboarding. Payslip or payment not finalized. Use force_complete=True to override.",
+                "payslip_issues": payslip_status_issues,
+                "payment_issues": payment_status_issues,
             })
 
-        # Check for uncleared settlements
-        uncleared_settlements = []
+        # Update finance settlement to cleared
         for settlement_id, settlement in finance_settlements.items():
-            if settlement.get("employee_id") == employee_id and not settlement.get("is_cleared"):
-                uncleared_settlements.append({
-                    "settlement_id": settlement_id,
-                    "amount": settlement.get("amount"),
-                    "is_cleared": settlement.get("is_cleared"),
-                })
-
-        if uncleared_settlements and not force_complete:
-            return json.dumps({
-                "error": f"Cannot complete offboarding. {len(uncleared_settlements)} settlements not cleared. "
-                "Use force_complete=True to override.",
-                "uncleared_settlements": uncleared_settlements,
-            })
-
-        timestamp = "2025-11-16T23:59:00"
+            if settlement.get("employee_id") == employee_id:
+                settlement["is_cleared"] = True
+                settlement["last_updated"] = timestamp
 
         # Update exit case
         exit_case["exit_clearance_status"] = "cleared"
@@ -130,6 +137,25 @@ class CompleteOffboarding(Tool):
         if offboarding_checklist_id and offboarding_checklist_id in checklists:
             checklists[offboarding_checklist_id]["status"] = "completed"
             checklists[offboarding_checklist_id]["last_updated"] = timestamp
+
+        # Update finance settlement to cleared
+        for settlement_id, settlement in finance_settlements.items():
+            if settlement.get("employee_id") == employee_id:
+                settlement["is_cleared"] = True
+                settlement["last_updated"] = timestamp
+
+        # Update payslips to released
+        for payslip_id, payslip in payslips.items():
+            if payslip.get("employee_id") == employee_id and payslip.get("status") == "draft":
+                payslip["status"] = "released"
+                payslip["last_updated"] = timestamp
+
+        # Update payments to completed
+        for payment_id, payment in payments.items():
+            if payment.get("employee_id") == employee_id and payment.get("status") == "pending":
+                payment["status"] = "completed"
+                payment["payment_date"] = timestamp
+                payment["last_updated"] = timestamp
 
         # Update employee status
         if employee_id in employees:
@@ -152,12 +178,15 @@ class CompleteOffboarding(Tool):
             "employee_status": employees.get(employee_id, {}).get("status"),
             "checklist_id": offboarding_checklist_id,
             "completion_message": f"Offboarding completed for employee {employee_id}",
-            "warnings": {
-                "force_completed": force_complete,
-                "pending_tasks_count": len(pending_tasks) if force_complete else 0,
-                "unreturned_assets_count": len(unreturned_assets) if force_complete else 0,
-                "uncleared_settlements_count": len(uncleared_settlements) if force_complete else 0,
-            },
+            "status_updates": {
+                "exit_case_status": "cleared",
+                "checklist_status": "completed",
+                "settlement_status": "cleared",
+                "payslips_status": "released",
+                "payments_status": "completed",
+                "employee_status": "inactive",
+                "contract_terminated": True,
+            }
         })
 
     @staticmethod
@@ -165,13 +194,14 @@ class CompleteOffboarding(Tool):
         return {
             "type": "function",
             "function": {
-                "name": "complete_offboarding",
+                "name": "complete_employee_offboarding",
                 "description": (
-                    "Completes the offboarding process for an employee. "
+                    "Completes the offboarding process for an employee by updating all related entities. "
+                    "Updates exit case status to 'cleared', offboarding checklist and all its tasks to 'completed', "
+                    "finance settlement to 'cleared', payslips to 'released', payments to 'completed', "
+                    "employee status to 'inactive', and terminates the employee contract. "
+                    "Validates that payslips are finalized (released/updated) and payments are completed before completion. "
                     "Automatically finds the employee's exit case and offboarding checklist. "
-                    "Marks the exit case as cleared (from exit_clearance_status enum), "
-                    "sets employee status to inactive (from employee_status enum), and terminates contracts. "
-                    "Validates that all tasks are complete, assets returned, and settlements cleared unless forced. "
                     "Requires that initiate_offboarding has already been called for the employee."
                 ),
                 "parameters": {
@@ -183,7 +213,10 @@ class CompleteOffboarding(Tool):
                         },
                         "force_complete": {
                             "type": "boolean",
-                            "description": "Force completion even if tasks are pending (True/False). Defaults to False.",
+                            "description": (
+                                "Force completion even if tasks, assets, settlements, "
+                                "payslips, or payments are not finalized (True/False). Defaults to False."
+                            ),
                         },
                     },
                     "required": ["employee_id"],

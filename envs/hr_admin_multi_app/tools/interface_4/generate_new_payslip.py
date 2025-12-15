@@ -156,7 +156,7 @@ class GenerateNewPayslip(Tool):
             "payslip_id": new_payslip_id,
             "employee_id": employee_id,
             "cycle_id": cycle_id,
-            "net_pay_value": str(round(net_pay_value, 2)),
+            "net_pay_value": round(net_pay_value, 2),
             "status": status,
             "created_at": timestamp,
             "last_updated": timestamp

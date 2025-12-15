@@ -23,7 +23,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 ## **Standard Operating Procedures (SOPs)**
 
-1. ### **Employee Onboarding Initiation**
+### **SOP 1: Employee Onboarding Initiation**
 
 "Steps to follow":
 
@@ -35,13 +35,13 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 4. Create the new employee using create_worker.
 
-5. Create Employee contract and compensation data using create_employment_contract and link it with the employee created from step 4\.
+5. Create Employee contract and compensation data using create_employment_contract and link it with the employee created from step 4.
 
 6. To update any document information and url use upload_worker_document.
 
 7. To update the employee profile proceed to To update the employee profile proceed to Employee Data Change Management (SOP 2).
 
-8. ### **Employee Data Change Management**
+### **SOP 2: Employee Data Change Management**
 
 "Steps to follow":
 
@@ -53,7 +53,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 4. To update employee data including assigning a new manager, location changes, employee status and personal info use update_worker_info.
 
-5. ### **Creationing Onboarding Checklist**
+### **SOP 3: Creationing Onboarding Checklist**
 
 "Steps to follow":
 
@@ -67,7 +67,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 5. Create the checklist using create_new_checklist.
 
-6. ### **Onboarding Checklist Progress Tracking & Closure**
+### **SOP 4: Onboarding Checklist Progress Tracking & Closure**
 
 "Steps to follow":
 
@@ -82,7 +82,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 5. If updating a task status or assigning a task to a new manager, Use update_checklist_data.
 6. To close a checklist, verify all the assigned tasks status are “completed”. Then close the checklist using complete_onboarding_process.
 
-7. ### **Benefit Plan Management**
+### **SOP 5: Benefit Plan Management**
 
 "Steps to follow":
 
@@ -100,7 +100,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
    2. To update or edit the details of an existing plan.
    3. To change a plan's status (e.g., activating or temporarily removing it).
 
-6. ### **Benefit Enrollment Processing**
+### **SOP 6: Benefit Enrollment Processing**
 
 "Steps to follow":
 
@@ -113,7 +113,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 5. If the plan is “active”, create the employee enrollment using create_employee_benefit_enrollment.
 
-6. ### **Payroll Cycle Setup & Validation**
+### **SOP 7: Payroll Cycle Setup & Validation**
 
 "Steps to follow":
 
@@ -127,7 +127,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 5. If there is no matching existing cycle, create a new cycle by executing process_payroll_cycle.
 
-6. ### **Payroll Input Creation**
+### **SOP 8: Payroll Input Creation**
 
 "Steps to follow":
 
@@ -141,9 +141,9 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 5. If no cycle is found with a status “open”, halt and switch_to_human.
 
-6. If an open circle is available, add a new employee payroll input for the employee from step 3 using process_payroll_input.
+6. If an open cycle is available, add a new employee payroll input for the employee from step 3 using process_payroll_input.
 
-7. ### **Payroll Input Update**
+### **SOP 9: Payroll Input Update**
 
 "Steps to follow":
 
@@ -159,7 +159,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 6. Apply changes by updating the payroll input using process_payroll_input.
 
-7. ### **Payroll Earning Creation**
+### **SOP 10: Payroll Earning Creation**
 
 "Steps to follow":
 
@@ -177,7 +177,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 7. Use the manage_payroll_earning to add the new earning record for the employee from step 3, linked to the target payroll cycle identified in Step 4\.
 
-8. ### **Payroll Earning Approval**
+### **SOP 11: Payroll Earning Approval**
 
 "Steps to follow":
 
@@ -196,7 +196,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 8. To approve or deny a payroll earning use manage_payroll_earning.
 
-9. ### **Payroll Deduction Administration**
+### **SOP 12: Payroll Deduction Administration**
 
 "Steps to follow":
 
@@ -208,7 +208,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 4. Use get_deduction_data to retrieve all applicable deduction rules with “active” status.
 
-   - If the specific deduction rule required for this action does not exist or status is “inactive”, the procedure must be halted and switch_to_human.
+   1. If the specific deduction rule required for this action does not exist or status is “inactive”, the procedure must be halted and switch_to_human.
 
 5. Use open_payroll_period to retrieve the last open payroll cycle needed to process the deduction by checking the start date or end date.
 
@@ -216,10 +216,10 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 7. To apply the deduction**:**
 
-   - If the deduction exists, use edit_payroll_deduction to apply any necessary updates or modifications to the existing deduction.
-   - If the deduction does not exist, use produce_payroll_deduction to create a new payroll deduction record with the open cycle and user details.
+   1. If the deduction exists, use edit_payroll_deduction to apply any necessary updates or modifications to the existing deduction.
+   2. If the deduction does not exist, use produce_payroll_deduction to create a new payroll deduction record with the open cycle and user details.
 
-8. ### **Payslip Generation**
+### **SOP 13: Payslip Generation**
 
 "Steps to follow":
 
@@ -239,7 +239,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 6. To release the payslip before processing payment, proceed to SOP 14\.
 
-7. ### **Payslip Release**
+### **SOP 14: Payslip Release**
 
 "Steps to follow":
 
@@ -253,7 +253,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 5. Proceed to SOP 15 to initiate and process the payment.
 
-6. ### **Payment Processing**
+### **SOP 15: Payment Processing**
 
 "Steps to follow":
 
@@ -267,7 +267,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 5. To update the payment status proceed to SOP 16\.
 
-6. ### **Payment Status Update**
+### **SOP 16: Payment Status Update**
 
 "Steps to follow":
 
@@ -281,7 +281,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 5. If the current status is “failed”, initiate a new payment using process_payroll_payment.
 
-6. ### **Employee Exit Case Initiation**
+### **SOP 17: Employee Exit Case Initiation**
 
 "Steps to follow":
 
@@ -295,7 +295,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 5. Update the exit documentation url with title “Resignation Letter” using upload_worker_document .
 
-6. ### **Exit Clearance Processing**
+### **SOP 18: Exit Clearance Processing**
 
 "Steps to follow":
 
@@ -311,7 +311,7 @@ You must halt the procedure and immediately initiate a switch_to_human (escalati
 
 6. If the HR clearance document is “accepted”, update the exit case status by marking exit case clearance as “cleared” using compute_exit_settlement.
 
-7. ### **Exit Processing**
+### **SOP 19: Exit Processing**
 
 "Steps to follow":
 

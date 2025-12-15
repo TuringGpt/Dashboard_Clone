@@ -77,9 +77,9 @@ class UpdateBenefitRecord(Tool):
         if name is not None:
             plan["name"] = name
         if current_cost is not None:
-            plan["current_cost"] = str(current_cost)
+            plan["current_cost"] = current_cost
         if previous_year_cost is not None:
-            plan["previous_year_cost"] = str(previous_year_cost)
+            plan["previous_year_cost"] = previous_year_cost
         if enrollment_window is not None:
             plan["enrollment_window"] = enrollment_window
         if status is not None:

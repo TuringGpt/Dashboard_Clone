@@ -195,7 +195,7 @@ class CreateEmployee(Tool):
                             "description": "Flag indicating if finance approval is required: True/False (optional, defaults to False)"
                         }
                     },
-                    "required": ["department_id", "start_date", "full_name", "email", "base_salary"]
+                    "required": []
                 }
             }
         }

@@ -136,7 +136,7 @@ class CreateNewWorker(Tool):
             "status": status,
             "tenure_months": tenure_months if tenure_months is not None else 0,
             "performance_rating": None,
-            "base_salary": str(base_salary),
+            "base_salary": base_salary,
             "location": location,
             "role": role,
             "flag_financial_counseling_recommended": False,

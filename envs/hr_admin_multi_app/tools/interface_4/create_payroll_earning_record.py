@@ -7,6 +7,7 @@ class CreatePayrollEarningRecord(Tool):
     def invoke(
         data: Dict[str, Any],
         employee_id: str,
+        cycle_id: str,
         amount: float,
         earning_type: str = 'bonus',
         status: str = 'pending'
@@ -16,6 +17,7 @@ class CreatePayrollEarningRecord(Tool):
         """
         payroll_earnings = data.get("payroll_earnings", {})
         employees = data.get("employees", {})
+        payroll_cycles = data.get("payroll_cycles", {})
         timestamp = "2025-11-16T23:59:00"
         
         # Validate required fields
@@ -29,6 +31,12 @@ class CreatePayrollEarningRecord(Tool):
             return json.dumps({
                 "success": False,
                 "error": "amount is required"
+            })
+        
+        if not cycle_id:
+            return json.dumps({
+                "success": False,
+                "error": "cycle_id is required"
             })
         
         # Validate employee exists
@@ -45,6 +53,13 @@ class CreatePayrollEarningRecord(Tool):
             return json.dumps({
                 "success": False,
                 "error": f"Employee '{employee_id}' is not active (status is '{employee.get('status')}')"
+            })
+        
+        # Validate payroll cycle exists
+        if cycle_id not in payroll_cycles:
+            return json.dumps({
+                "success": False,
+                "error": f"cycle_id '{cycle_id}' does not reference a valid payroll cycle"
             })
         
         # Validate earning_type
@@ -75,8 +90,9 @@ class CreatePayrollEarningRecord(Tool):
         new_earning = {
             "earning_id": new_earning_id,
             "employee_id": employee_id,
+            "cycle_id": cycle_id,
             "earning_type": earning_type,
-            "amount": str(amount),
+            "amount": amount,
             "status": status,
             "created_at": timestamp,
             "last_updated": timestamp
@@ -95,13 +111,17 @@ class CreatePayrollEarningRecord(Tool):
             "type": "function",
             "function": {
                 "name": "create_payroll_earning_record",
-                "description": "Create a new payroll earning record. Validates employee exists and is active, and earning_type is valid.",
+                "description": "Create a new payroll earning record. Validates employee exists and is active, payroll cycle exists, and earning_type is valid.",
                 "parameters": {
                     "type": "object",
                     "properties": {
                         "employee_id": {
                             "type": "string",
                             "description": "Employee ID (required)"
+                        },
+                        "cycle_id": {
+                            "type": "string",
+                            "description": "Payroll cycle ID (required)"
                         },
                         "amount": {
                             "type": "number",
@@ -118,7 +138,7 @@ class CreatePayrollEarningRecord(Tool):
                             "enum": ["pending", "approved", "rejected", "require_justification"]
                         }
                     },
-                    "required": ["employee_id", "amount"]
+                    "required": ["employee_id", "cycle_id", "amount"]
                 }
             }
         }

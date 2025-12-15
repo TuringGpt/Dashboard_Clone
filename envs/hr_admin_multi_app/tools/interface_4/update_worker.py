@@ -136,7 +136,7 @@ class UpdateWorker(Tool):
         if tenure_months is not None:
             employee["tenure_months"] = tenure_months
         if base_salary is not None:
-            employee["base_salary"] = str(base_salary)
+            employee["base_salary"] = base_salary
         if location is not None:
             employee["location"] = location
         
