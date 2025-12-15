@@ -11,7 +11,7 @@ class ModifyPayrollData(Tool):
         earning_type: Optional[str] = None
     ) -> str:
         """
-        Modify payroll earning record (approve or reject).
+        Modify payroll earning record (approved, rejected, pending, require_justification).
         """
         payroll_earnings = data.get("payroll_earnings", {})
         timestamp = "2025-11-16T23:59:00"
@@ -79,7 +79,7 @@ class ModifyPayrollData(Tool):
             "type": "function",
             "function": {
                 "name": "modify_payroll_data",
-                "description": "Modify payroll earning record (approve or reject). Maps 'approve' to 'approved' and 'reject' to 'rejected' status.",
+                "description": "Modify payroll earning record (approved, rejected, pending, require_justification). Maps 'approve' to 'approved' and 'reject' to 'rejected' status.",
                 "parameters": {
                     "type": "object",
                     "properties": {

@@ -2,7 +2,7 @@ from .add_benefit_plan import AddBenefitPlan
 from .approve_bonus import ApproveBonus
 from .approve_commission import ApproveCommission
 from .assign_exit_tasks import AssignExitTasks
-from .complete_offboarding import CompleteOffboarding
+from .complete_employee_offboarding import CompleteEmployeeOffboarding
 from .create_benefit_enrollment import CreateBenefitEnrollment
 from .create_compensation_payment import CreateCompensationPayment
 from .create_employee_payslip import CreateEmployeePayslip
@@ -39,7 +39,7 @@ ALL_TOOLS_INTERFACE_3 = [
     ApproveBonus,
     ApproveCommission,
     AssignExitTasks,
-    CompleteOffboarding,
+    CompleteEmployeeOffboarding,
     CreateBenefitEnrollment,
     CreateCompensationPayment,
     CreateEmployeePayslip,

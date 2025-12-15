@@ -360,7 +360,7 @@ class ProcessPayrollInput(Tool):
                             "description": "Variance percentage (optional)",
                         },
                     },
-                    "required": ["employee_id", "cycle_id", "hours_worked"],
+                    "required": ["employee_id", "cycle_id"],
                 },
             },
         }

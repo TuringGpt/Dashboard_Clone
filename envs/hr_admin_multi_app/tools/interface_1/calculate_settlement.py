@@ -309,7 +309,7 @@ class CalculateSettlement(Tool):
                             "description": "Payroll cycle identifier for settlement calculation (required)"
                         }
                     },
-                    "required": ["cycle_id"]
+                    "required": []
                 }
             }
         }

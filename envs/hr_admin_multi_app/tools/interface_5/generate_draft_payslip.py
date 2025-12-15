@@ -8,7 +8,7 @@ class GenerateDraftPayslip(Tool):
     Generate a draft payslip for an employee.
     - Creates a new payslip for an employee in a specific payroll cycle.
     - Calculates net pay value based on base salary, earnings, and deductions.
-    - Validates employee exists, cycle exists and is approved.
+    - Validates employee exists, cycle exists and is open.
     - Ensures no duplicate payslip exists for the same employee-cycle combination.
     - Sets initial status as 'draft'.
     - Returns the created payslip details or an error.
@@ -114,7 +114,6 @@ class GenerateDraftPayslip(Tool):
                 }
             )
 
-        # Validate cycle status is 'approved' (per SOP 13)
         cycle = payroll_cycles_dict[cycle_id_str]
         if not isinstance(cycle, dict):
             return json.dumps(
@@ -124,11 +123,11 @@ class GenerateDraftPayslip(Tool):
                 }
             )
 
-        if cycle.get("status") != "approved":
+        if cycle.get("status") != "open":
             return json.dumps(
                 {
                     "success": False,
-                    "error": f"Payroll cycle '{cycle_id_str}' must have status 'approved' to generate payslip. Current status: {cycle.get('status')}",
+                    "error": f"Payroll cycle '{cycle_id_str}' must have status 'open' to generate payslip. Current status: {cycle.get('status')}",
                 }
             )
 
@@ -297,7 +296,7 @@ class GenerateDraftPayslip(Tool):
                     "Hourly Rate = Annual Base Salary / (52 weeks * 80 hours/week), "
                     "Gross Pay = (hours_worked * hourly_rate) + (overtime_hours * hourly_rate * 1.5), "
                     "Net Pay = Gross Pay + approved earnings - valid deductions. "
-                    "Validates that employee exists, cycle exists and has 'approved' status, "
+                    "Validates that employee exists, cycle exists and has 'open' status, "
                     "and payroll input exists for the employee-cycle. "
                     "Ensures no duplicate payslip exists for the same employee-cycle combination. "
                     "Sets initial status as 'draft'. "

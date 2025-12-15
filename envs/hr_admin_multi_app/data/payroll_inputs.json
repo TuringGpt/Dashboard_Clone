@@ -294,10 +294,10 @@
     "hours_worked": 76.01,
     "overtime_hours": 0,
     "payroll_variance_percent": "0",
-    "status": "approved",
+    "status": "locked",
     "issue_field": null,
     "created_at": "2025-09-05T07:20:35.680999",
-    "last_updated": "2025-09-06T18:19:34.483367"
+    "last_updated": "2025-11-16T12:00:00"
   },
   "26": {
     "input_id": "26",
@@ -366,10 +366,10 @@
     "hours_worked": 80.5,
     "overtime_hours": 0,
     "payroll_variance_percent": "0",
-    "status": "approved",
+    "status": "locked",
     "issue_field": null,
     "created_at": "2025-08-31T08:41:40.000909",
-    "last_updated": "2025-09-05T16:24:17.158971"
+    "last_updated": "2025-11-16T12:00:00"
   },
   "32": {
     "input_id": "32",
@@ -534,10 +534,10 @@
     "hours_worked": 77.38,
     "overtime_hours": 0,
     "payroll_variance_percent": "0",
-    "status": "locked",
+    "status": "approved",
     "issue_field": null,
     "created_at": "2025-08-26T10:39:39.101013",
-    "last_updated": "2025-11-16T12:00:00"
+    "last_updated": "2025-09-05T16:48:33.804857"
   },
   "46": {
     "input_id": "46",
@@ -726,7 +726,7 @@
     "hours_worked": 77.26,
     "overtime_hours": 0,
     "payroll_variance_percent": -8.98,
-    "status": "approved",
+    "status": "locked",
     "issue_field": null,
     "created_at": "2025-09-10T12:35:50.584646",
     "last_updated": "2025-11-16T12:00:00"
@@ -798,7 +798,7 @@
     "hours_worked": 74.55,
     "overtime_hours": 8.15,
     "payroll_variance_percent": 16.26,
-    "status": "approved",
+    "status": "locked",
     "issue_field": null,
     "created_at": "2025-09-15T09:51:05.463324",
     "last_updated": "2025-11-16T12:00:00"
@@ -894,7 +894,7 @@
     "hours_worked": 83.25,
     "overtime_hours": 0,
     "payroll_variance_percent": -6.56,
-    "status": "locked",
+    "status": "approved",
     "issue_field": null,
     "created_at": "2025-09-07T07:24:42.284489",
     "last_updated": "2025-11-16T12:00:00"
@@ -1014,7 +1014,7 @@
     "hours_worked": 71.91,
     "overtime_hours": 3.69,
     "payroll_variance_percent": -3.42,
-    "status": "approved",
+    "status": "locked",
     "issue_field": null,
     "created_at": "2025-09-13T17:58:22.093624",
     "last_updated": "2025-11-16T12:00:00"
@@ -1050,7 +1050,7 @@
     "hours_worked": 84.34,
     "overtime_hours": 5.31,
     "payroll_variance_percent": 2.37,
-    "status": "locked",
+    "status": "approved",
     "issue_field": null,
     "created_at": "2025-09-07T10:59:51.470622",
     "last_updated": "2025-11-16T12:00:00"
@@ -1170,7 +1170,7 @@
     "hours_worked": 77.18,
     "overtime_hours": 6.78,
     "payroll_variance_percent": 4.69,
-    "status": "locked",
+    "status": "approved",
     "issue_field": null,
     "created_at": "2025-09-19T15:42:09.838416",
     "last_updated": "2025-11-16T12:00:00"
@@ -1302,7 +1302,7 @@
     "hours_worked": 76.7,
     "overtime_hours": 0,
     "payroll_variance_percent": -0.73,
-    "status": "locked",
+    "status": "approved",
     "issue_field": null,
     "created_at": "2025-09-30T11:49:45.417469",
     "last_updated": "2025-11-16T12:00:00"
@@ -1410,7 +1410,7 @@
     "hours_worked": 80.82,
     "overtime_hours": 0,
     "payroll_variance_percent": -5.01,
-    "status": "locked",
+    "status": "approved",
     "issue_field": null,
     "created_at": "2025-09-27T17:11:56.019629",
     "last_updated": "2025-11-16T12:00:00"
@@ -1494,7 +1494,7 @@
     "hours_worked": 70.63,
     "overtime_hours": 0,
     "payroll_variance_percent": -25.87,
-    "status": "locked",
+    "status": "approved",
     "issue_field": null,
     "created_at": "2025-09-28T15:31:44.340677",
     "last_updated": "2025-11-16T12:00:00"
@@ -1542,7 +1542,7 @@
     "hours_worked": 75.3,
     "overtime_hours": 0,
     "payroll_variance_percent": 1.09,
-    "status": "locked",
+    "status": "approved",
     "issue_field": null,
     "created_at": "2025-09-26T14:34:01.218379",
     "last_updated": "2025-11-16T12:00:00"
@@ -1566,7 +1566,7 @@
     "hours_worked": 80.48,
     "overtime_hours": 3.1,
     "payroll_variance_percent": 4.61,
-    "status": "approved",
+    "status": "locked",
     "issue_field": null,
     "created_at": "2025-09-22T18:48:29.595370",
     "last_updated": "2025-11-16T12:00:00"
@@ -1602,7 +1602,7 @@
     "hours_worked": 77.22,
     "overtime_hours": 0,
     "payroll_variance_percent": 4.29,
-    "status": "approved",
+    "status": "locked",
     "issue_field": null,
     "created_at": "2025-09-30T11:02:02.595748",
     "last_updated": "2025-11-16T12:00:00"
@@ -2106,7 +2106,7 @@
     "hours_worked": 70.68,
     "overtime_hours": 0,
     "payroll_variance_percent": -16.9,
-    "status": "approved",
+    "status": "locked",
     "issue_field": null,
     "created_at": "2025-10-15T18:07:47.889265",
     "last_updated": "2025-11-16T12:00:00"
@@ -2166,7 +2166,7 @@
     "hours_worked": 73.17,
     "overtime_hours": 1.39,
     "payroll_variance_percent": 6.79,
-    "status": "locked",
+    "status": "approved",
     "issue_field": null,
     "created_at": "2025-10-14T12:40:20.746348",
     "last_updated": "2025-11-16T12:00:00"
@@ -2190,7 +2190,7 @@
     "hours_worked": 82.93,
     "overtime_hours": 0,
     "payroll_variance_percent": 2.28,
-    "status": "approved",
+    "status": "locked",
     "issue_field": null,
     "created_at": "2025-10-10T18:11:16.820539",
     "last_updated": "2025-11-16T12:00:00"

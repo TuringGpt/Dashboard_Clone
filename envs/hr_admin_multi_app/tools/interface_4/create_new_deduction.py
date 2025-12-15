@@ -105,7 +105,7 @@ class CreateNewDeduction(Tool):
             "employee_id": employee_id,
             "cycle_id": cycle_id,
             "deduction_rule_id": deduction_rule_id,
-            "amount": str(amount),
+            "amount": amount,
             "deduction_date": deduction_date,
             "status": status,
             "created_at": timestamp,

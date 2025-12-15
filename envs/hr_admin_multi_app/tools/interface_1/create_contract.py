@@ -88,7 +88,7 @@ class CreateContract(Tool):
                             "description": "URL link to the digital contract document (optional)"
                         }
                     },
-                    "required": ["employee_id"]
+                    "required": []
                 }
             }
         }

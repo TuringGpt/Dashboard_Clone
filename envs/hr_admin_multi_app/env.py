@@ -85,5 +85,5 @@ class MockHRAdminMultiAppDomainEnv(Env):
             user_provider=user_provider,
             task_index=task_index,
         )
-        self.terminate_tools = ["transfer_to_human_agents"]
+        self.terminate_tools = ["transfer_to_human", "switch_to_human", "escalate_to_human", "handoff_to_human", "delegate_to_human"]
         

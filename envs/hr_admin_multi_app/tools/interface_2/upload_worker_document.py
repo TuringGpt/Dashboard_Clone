@@ -207,7 +207,7 @@ class UploadWorkerDocument(Tool):
                             "enum": ["accepted", "rejected"],
                         },
                     },
-                    "required": ["employee_id", "document_url", "document_type"],
+                    "required": ["employee_id", "document_url"],
                 },
             },
         }

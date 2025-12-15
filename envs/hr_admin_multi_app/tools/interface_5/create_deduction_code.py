@@ -20,6 +20,9 @@ class CreateDeductionCode(Tool):
             if not table:
                 return "1"
             return str(max(int(key) for key in table.keys()) + 1)
+        
+        def normalize(value: Optional[str]) -> Optional[str]:
+            return value.strip().lower() if isinstance(value, str) and value.strip() else None        
 
         if not isinstance(data, dict):
             return json.dumps({"success": False, "error": "Invalid data container"})

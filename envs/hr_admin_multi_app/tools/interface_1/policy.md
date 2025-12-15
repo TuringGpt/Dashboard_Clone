@@ -42,7 +42,7 @@ Only when none of these conditions are triggered should you proceed to finalize 
 
 1. Retrieve department details and ensure that the status is “active” using `get_department`. If the status of the department is “inactive” then use `transfer_to_human` and halt.  
 2. If the employee start date is the same as the current date, then create the employee record using `create_employee`, linked to the manager and department from step 1.  
-3. If the employee records were created successfully from step 2, then check if start date > current date, and then generate the digital contract for the new employee from step 2 using `create_contract` with future-dated due dates.  
+3. If the employee records were created successfully from step 2, then check if start date is equal to or greater than the current date, and then generate the digital contract for the new employee from step 2 using `create_contract` with future-dated due dates. 
 4. If the employee records were created successfully from step 2, then initiate the onboarding checklist process for the new hire from step 2 by following SOP 4-Create Onboarding Checklist.
 
 ### 3. Update Employee Data
@@ -77,7 +77,7 @@ Only when none of these conditions are triggered should you proceed to finalize 
 
 1. If employee details do not already exist, retrieve it using `get_employee_profile`.  
 2. Retrieve the onboarding checklist of the employee from step 1 using `get_transition_data`.  
-3. If the status of the checklist is to be updated to “closed”:  
+3. If the status of the checklist is to be updated to “completed”:  
    - Ensure all tasks and dependencies are completed from step 2.  
 4. Update checklist accordingly using `update_onboard_checklist`.
 
@@ -86,9 +86,8 @@ Only when none of these conditions are triggered should you proceed to finalize 
 
 1. If employee details do not already exist, retrieve it using `get_employee_profile`.  
 2. Retrieve all benefit plans whose status is “active” using `get_benefit_data`.  
-3. Check all retrieved benefit plans and confirm that none of them has a cost variance > 15% of the previous year. If any exists, update them using `update_benefit_plan`.  
-4. If we want to create a new benefit plan, do that using `create_benefit_plan`.  
-5. If we want to update or edit an existing plan, do that using `update_benefit_plan`.
+3. If we want to create a new benefit plan, do that using `create_benefit_plan`.  
+4. If we want to update or edit an existing plan, do that using `update_benefit_plan`.
 
 ### 7. Create Benefit Enrollment
 **Steps to follow:**

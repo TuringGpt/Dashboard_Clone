@@ -212,7 +212,7 @@ class UpdateEmployee(Tool):
                             "description": "Flag indicating if finance approval is required: True/False (optional)"
                         }
                     },
-                    "required": ["employee_id"]
+                    "required": []
                 }
             }
         }

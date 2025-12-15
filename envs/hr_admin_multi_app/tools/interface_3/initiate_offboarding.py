@@ -11,11 +11,13 @@ class InitiateOffboarding(Tool):
         employee_id: str,
         reason: str,
         exit_date: str,
+        payment_method: str,
         tasks: Optional[List[Dict[str, Any]]] = None,
     ) -> str:
         """
-        Initiate the offboarding process for an employee by creating an exit case
-        and an offboarding checklist with tasks.
+        Initiate the offboarding process for an employee by creating an exit case,
+        an offboarding checklist with tasks, and pending finance records (settlement,
+        payslip, and payment).
         
         Args:
             data: The database dictionary containing all tables.
@@ -23,6 +25,7 @@ class InitiateOffboarding(Tool):
             reason: The reason for offboarding. Allowed values: 'misconduct', 'security_breach', 
                 'policy_violation', 'voluntary_resignation', 'layoff' (required).
             exit_date: The exit date in format (YYYY-MM-DD) (required).
+            payment_method: Payment method for final payment. Allowed values: 'Bank Transfer', 'Check' (required).
             tasks: Optional list of task objects for the offboarding checklist. Each task should have:
                 name (required): Name of the offboarding task.
                 due_date (required): Due date in format (YYYY-MM-DD).
@@ -30,7 +33,7 @@ class InitiateOffboarding(Tool):
                 If not provided, default offboarding tasks will be created.
         
         Returns:
-            JSON string with the created exit case, checklist, and tasks.
+            JSON string with the created exit case, checklist, tasks, and finance records.
         """
         def generate_id(table: Dict[str, Any]) -> str:
             if not table:
@@ -52,6 +55,8 @@ class InitiateOffboarding(Tool):
             return json.dumps({"error": "Missing required parameter: reason is required"})
         if not exit_date:
             return json.dumps({"error": "Missing required parameter: exit_date is required"})
+        if not payment_method:
+            return json.dumps({"error": "Missing required parameter: payment_method is required"})
 
         # Validate reason
         allowed_reasons = ["misconduct", "security_breach", "policy_violation", "voluntary_resignation", "layoff"]
@@ -60,11 +65,26 @@ class InitiateOffboarding(Tool):
                 "error": f"Invalid reason. Allowed values: {', '.join(allowed_reasons)}"
             })
 
+        # Validate payment method
+        allowed_payment_methods = ["Bank Transfer", "Check"]
+        if payment_method not in allowed_payment_methods:
+            return json.dumps({
+                "error": f"Invalid payment method. Allowed values: {', '.join(allowed_payment_methods)}"
+            })
+
         employee_id = str(employee_id)
         employees = data.get("employees", {})
         exit_cases = data.get("exit_cases", {})
         checklists = data.get("checklists", {})
         checklist_tasks = data.get("checklist_tasks", {})
+        finance_settlements = data.get("finance_settlements", {})
+        payslips = data.get("payslips", {})
+        payments = data.get("payments", {})
+        payroll_cycles = data.get("payroll_cycles", {})
+        payroll_inputs = data.get("payroll_inputs", {})
+        payroll_earnings = data.get("payroll_earnings", {})
+        deductions = data.get("deductions", {})
+        employee_assets = data.get("employee_assets", {})
 
         if employee_id not in employees:
             return json.dumps({"error": f"Employee with ID '{employee_id}' not found"})
@@ -204,11 +224,101 @@ class InitiateOffboarding(Tool):
 
         data["checklist_tasks"] = checklist_tasks
 
+        # Find current open payroll cycle
+        current_cycle_id = None
+        for cycle_id, cycle in payroll_cycles.items():
+            if cycle.get("status") == "open":
+                current_cycle_id = cycle_id
+                break
+
+        # Calculate settlement amount
+        # Gross Pay = (hours_worked × hourly_rate) + (overtime_hours × hourly_rate × 1.5)
+        base_salary = employee.get("base_salary", 0)
+        hourly_rate = base_salary / 2080  # Standard full-time hours per year
+
+        gross_pay = 0
+        for input_id, payroll_input in payroll_inputs.items():
+            if payroll_input.get("employee_id") == employee_id and payroll_input.get("cycle_id") == current_cycle_id:
+                hours_worked = payroll_input.get("hours_worked", 0)
+                overtime_hours = payroll_input.get("overtime_hours", 0)
+                gross_pay = (hours_worked * hourly_rate) + (overtime_hours * hourly_rate * 1.5)
+                break
+
+        # Total Earning = Gross Pay + payroll_earning
+        total_earning = gross_pay
+        for earning_id, earning in payroll_earnings.items():
+            if earning.get("employee_id") == employee_id and earning.get("cycle_id") == current_cycle_id:
+                total_earning += earning.get("amount", 0)
+
+        # Calculate asset charges: (N_missing * 500) + (N_damaged * 250)
+        asset_charges = 0
+        for asset_id, asset in employee_assets.items():
+            if asset.get("employee_id") == employee_id:
+                if asset.get("status") == "missing":
+                    asset_charges += 500
+                elif asset.get("status") == "damaged":
+                    asset_charges += 250
+
+        # Sum deductions
+        total_deductions = 0
+        for deduction_id, deduction in deductions.items():
+            if deduction.get("employee_id") == employee_id and deduction.get("cycle_id") == current_cycle_id:
+                total_deductions += deduction.get("amount", 0)
+
+        # Amount = Total Earning - deductions - Asset Charges
+        settlement_amount = total_earning - total_deductions - asset_charges
+
+        # Create finance settlement record (pending)
+        settlement_id = generate_id(finance_settlements)
+        new_settlement = {
+            "settlement_id": settlement_id,
+            "employee_id": employee_id,
+            "amount": settlement_amount,
+            "is_cleared": False,
+            "created_at": timestamp,
+            "last_updated": timestamp,
+        }
+        finance_settlements[settlement_id] = new_settlement
+        data["finance_settlements"] = finance_settlements
+
+        # Create payslip record (draft) - payslip will be settlement amount
+        payslip_id = generate_id(payslips)
+        new_payslip = {
+            "payslip_id": payslip_id,
+            "employee_id": employee_id,
+            "cycle_id": current_cycle_id,
+            "net_pay_value": settlement_amount,
+            "status": "draft",
+            "created_at": timestamp,
+            "last_updated": timestamp,
+        }
+        payslips[payslip_id] = new_payslip
+        data["payslips"] = payslips
+
+        # Create payment record (pending)
+        payment_id = generate_id(payments)
+        new_payment = {
+            "payment_id": payment_id,
+            "employee_id": employee_id,
+            "source_payslip_id": payslip_id,
+            "payment_method": payment_method,
+            "amount": settlement_amount,
+            "status": "pending",
+            "payment_date": None,
+            "created_at": timestamp,
+            "last_updated": timestamp,
+        }
+        payments[payment_id] = new_payment
+        data["payments"] = payments
+
         return json.dumps({
             "exit_case": new_exit_case,
             "checklist": new_checklist,
             "tasks_created": len(created_tasks),
             "tasks": created_tasks,
+            "finance_settlement": new_settlement,
+            "payslip": new_payslip,
+            "payment": new_payment,
         })
 
     @staticmethod
@@ -218,9 +328,11 @@ class InitiateOffboarding(Tool):
             "function": {
                 "name": "initiate_offboarding",
                 "description": (
-                    "Initiates the offboarding process for an employee by creating an exit case "
-                    "and an offboarding checklist with tasks. "
-                    "Sets appropriate flags on the employee record based on the exit reason. "
+                    "Initiates the offboarding process for an employee by creating an exit case, "
+                    "an offboarding checklist with tasks, and pending finance records "
+                    "(settlement, payslip, and payment). "
+                    "Calculates the settlement amount based on gross pay, payroll earnings, deductions, "
+                    "and asset charges. Sets appropriate flags on the employee record based on the exit reason. "
                     "If tasks are not provided, default offboarding tasks will be created."
                 ),
                 "parameters": {
@@ -241,6 +353,13 @@ class InitiateOffboarding(Tool):
                         "exit_date": {
                             "type": "string",
                             "description": "The exit date in format (YYYY-MM-DD) (required).",
+                        },
+                        "payment_method": {
+                            "type": "string",
+                            "description": (
+                                "Payment method for the final payment (required). "
+                                "Allowed values: 'Bank Transfer', 'Check'."
+                            ),
                         },
                         "tasks": {
                             "type": "array",
@@ -268,7 +387,7 @@ class InitiateOffboarding(Tool):
                             },
                         },
                     },
-                    "required": ["employee_id", "reason", "exit_date"],
+                    "required": ["employee_id", "reason", "exit_date", "payment_method"],
                 },
             },
         }

@@ -8,7 +8,7 @@ class GetBonus(Tool):
     @staticmethod
     def invoke(
         data: Dict[str, Any],
-        filters: Optional[Dict[str, Any]] = None,
+        filters: Dict[str, Any] = None,
     ) -> str:
         """
         Retrieve bonus records with filters.

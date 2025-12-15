@@ -312,7 +312,7 @@ class ProcessPayrollCycle(Tool):
                             "enum": ["open", "closed"],
                         },
                     },
-                    "required": ["start_date","end_date","frequency"],
+                    "required": [],
                 },
             },
         }

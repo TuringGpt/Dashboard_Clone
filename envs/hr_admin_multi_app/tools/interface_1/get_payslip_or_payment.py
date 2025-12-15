@@ -8,10 +8,12 @@ class GetPayslipOrPayment(Tool):
     def invoke(
         data: Dict[str, Any],
         entity_type: str,
-        payslip_id: Optional[str] = None,
-        payment_id: Optional[str] = None,
+        entity_id: Optional[str] = None,
         employee_id: Optional[str] = None,
         cycle_id: Optional[str] = None,
+        status: Optional[str] = None,
+        payment_method: Optional[str] = None,
+        source_payslip_id: Optional[str] = None,
     ) -> str:
         """
         Fetches payslip or payment details based on the entity type and provided filters.
@@ -36,27 +38,38 @@ class GetPayslipOrPayment(Tool):
         if entity_type == "payslip":
             payslips = data.get("payslips", {})
             
-            # If specific payslip_id is provided
-            if payslip_id:
-                if payslip_id not in payslips:
+            # If specific entity_id is provided, return only that payslip
+            if entity_id:
+                entity_id = str(entity_id)
+                if entity_id not in payslips:
                     return json.dumps({
-                        "error": f"Payslip with ID '{payslip_id}' not found"
+                        "error": f"Payslip with ID '{entity_id}' not found"
                     })
                 
                 return json.dumps({
                     "success": True,
                     "entity_type": "payslip",
-                    "payslip_data": payslips[payslip_id]
+                    "count": 1,
+                    "results": [payslips[entity_id]]
                 })
             
             # Filter payslips based on provided criteria
             results = []
             for payslip in payslips.values():
                 match = True
-                if employee_id and payslip.get("employee_id") != employee_id:
-                    match = False
-                if cycle_id and payslip.get("cycle_id") != cycle_id:
-                    match = False
+                
+                if employee_id:
+                    if payslip.get("employee_id") != str(employee_id):
+                        match = False
+                
+                if cycle_id and match:
+                    if payslip.get("cycle_id") != str(cycle_id):
+                        match = False
+                
+                if status and match:
+                    if payslip.get("status") != status:
+                        match = False
+                
                 if match:
                     results.append(payslip)
             
@@ -69,28 +82,48 @@ class GetPayslipOrPayment(Tool):
         
         elif entity_type == "payment":
             payments = data.get("payments", {})
+            payslips = data.get("payslips", {})
             
-            # If specific payment_id is provided
-            if payment_id:
-                if payment_id not in payments:
+            # If specific entity_id is provided, return only that payment
+            if entity_id:
+                entity_id = str(entity_id)
+                if entity_id not in payments:
                     return json.dumps({
-                        "error": f"Payment with ID '{payment_id}' not found"
+                        "error": f"Payment with ID '{entity_id}' not found"
                     })
                 
                 return json.dumps({
                     "success": True,
                     "entity_type": "payment",
-                    "payment_data": payments[payment_id]
+                    "count": 1,
+                    "results": [payments[entity_id]]
                 })
             
             # Filter payments based on provided criteria
             results = []
             for payment in payments.values():
                 match = True
-                if employee_id and payment.get("employee_id") != employee_id:
-                    match = False
-                if cycle_id and payment.get("cycle_id") != cycle_id:
-                    match = False
+                
+                # Check employee_id match
+                if employee_id:
+                    if payment.get("employee_id") != str(employee_id):
+                        match = False
+                
+                # Check source_payslip_id match
+                if source_payslip_id and match:
+                    if payment.get("source_payslip_id") != str(source_payslip_id):
+                        match = False
+                
+                # Check status match
+                if status and match:
+                    if payment.get("status") != status:
+                        match = False
+                
+                # Check payment_method match
+                if payment_method and match:
+                    if payment.get("payment_method") != payment_method:
+                        match = False
+                
                 if match:
                     results.append(payment)
             
@@ -107,7 +140,7 @@ class GetPayslipOrPayment(Tool):
             "type": "function",
             "function": {
                 "name": "get_payslip_or_payment",
-                "description": "Fetches payslip or payment details from the HR payroll system.",
+                "description": "Fetches payslip or payment details from the HR payroll system with comprehensive filtering options.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -115,13 +148,9 @@ class GetPayslipOrPayment(Tool):
                             "type": "string",
                             "description": "Type of entity to fetch: 'payslip' or 'payment' (required)"
                         },
-                        "payslip_id": {
+                        "entity_id": {
                             "type": "string",
-                            "description": "ID of the specific payslip to retrieve (optional, used with entity_type='payslip')"
-                        },
-                        "payment_id": {
-                            "type": "string",
-                            "description": "ID of the specific payment to retrieve (optional, used with entity_type='payment')"
+                            "description": "ID of the specific payslip or payment to retrieve (optional). When provided, returns only that entity."
                         },
                         "employee_id": {
                             "type": "string",
@@ -129,7 +158,26 @@ class GetPayslipOrPayment(Tool):
                         },
                         "cycle_id": {
                             "type": "string",
-                            "description": "Filter by payroll cycle ID (optional)"
+                            "description": (
+                                "Filter by payroll cycle ID (optional). "
+                                "Only applicable for entity_type='payslip'. Filters payslips directly by cycle_id."
+                            )
+                        },
+                        "status": {
+                            "type": "string",
+                            "description": (
+                                "Filter by status (optional). "
+                                "For payslips: 'draft', 'released', 'updated'. "
+                                "For payments: 'pending', 'completed', 'failed'."
+                            )
+                        },
+                        "payment_method": {
+                            "type": "string",
+                            "description": "Filter by payment method (optional). For payments: 'Bank Transfer' or 'Check'. Only applicable for entity_type='payment'."
+                        },
+                        "source_payslip_id": {
+                            "type": "string",
+                            "description": "Filter by source payslip ID (optional). Only applicable for entity_type='payment'."
                         }
                     },
                     "required": ["entity_type"]
