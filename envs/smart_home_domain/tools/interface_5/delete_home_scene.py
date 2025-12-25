@@ -8,9 +8,11 @@ class DeleteHomeScene(Tool):
         data: Dict[str, Any],
         home_name: str,
         scene_id: str,
+        delete_automation_actions: bool = True,
     ) -> str:
         """
         Delete a scene and cascade delete related actions.
+        Optionally deletes routine actions that reference this scene.
         """
 
         if not isinstance(data, dict):
@@ -20,6 +22,8 @@ class DeleteHomeScene(Tool):
         scenes = data.get("scenes")
         scene_actions = data.get("scene_actions")
         scene_action_attributes = data.get("scene_action_attributes")
+        routine_actions = data.get("routine_actions")
+        routine_action_attributes = data.get("routine_action_attributes")
 
         if not isinstance(homes, dict):
             return json.dumps({"success": False, "error": "homes store missing"})
@@ -51,6 +55,31 @@ class DeleteHomeScene(Tool):
 
         deleted_scene = scenes.pop(scene_id)
 
+        # Track deleted automation references
+        deleted_automation_actions = []
+
+        # Delete routine_actions that reference this scene (if delete_automation_actions is True)
+        if delete_automation_actions and isinstance(routine_actions, dict):
+            routine_action_ids_to_delete = [
+                k for k, v in routine_actions.items() 
+                if v.get("target_scene_id") == scene_id
+            ]
+            
+            # Delete routine_action_attributes for these actions
+            if isinstance(routine_action_attributes, dict):
+                for attr_id in list(routine_action_attributes.keys()):
+                    if routine_action_attributes[attr_id].get("action_id") in routine_action_ids_to_delete:
+                        routine_action_attributes.pop(attr_id)
+            
+            # Delete the routine actions and track them
+            for action_id in routine_action_ids_to_delete:
+                deleted_action = routine_actions.pop(action_id)
+                deleted_automation_actions.append({
+                    "action_id": action_id,
+                    "routine_id": deleted_action.get("routine_id")
+                })
+
+        # Delete scene_actions and their attributes
         if isinstance(scene_actions, dict):
             action_ids_to_delete = [k for k, v in scene_actions.items() if v.get("scene_id") == scene_id]
             
@@ -62,19 +91,23 @@ class DeleteHomeScene(Tool):
             for action_id in action_ids_to_delete:
                 scene_actions.pop(action_id)
 
-        return json.dumps({
+        # Prepare response
+        response = {
             "success": True,
             "deleted_scene": {
-                "home_name": home_name,
                 "scene_id": deleted_scene.get("scene_id") or scene_id,
                 "scene_name": deleted_scene.get("scene_name"),
-                "description": deleted_scene.get("description"),
-                "status": deleted_scene.get("status"),
-                "voice_control_phrase": deleted_scene.get("voice_control_phrase"),
-                "created_at": deleted_scene.get("created_at"),
-                "updated_at": deleted_scene.get("updated_at"),
-            },
-        })
+            }
+        }
+
+        # Add automation info if any were deleted
+        if deleted_automation_actions:
+            response["deleted_automation_references"] = {
+                "count": len(deleted_automation_actions),
+                "actions": deleted_automation_actions
+            }
+
+        return json.dumps(response)
 
     @staticmethod
     def get_info() -> Dict[str, Any]:
@@ -82,7 +115,7 @@ class DeleteHomeScene(Tool):
             "type": "function",
             "function": {
                 "name": "delete_home_scene",
-                "description": "Delete a scene and all its actions.",
+                "description": "Delete a scene and all its actions. If delete_automation_actions is true, will also delete any routine actions that reference this scene as a target.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -94,9 +127,12 @@ class DeleteHomeScene(Tool):
                             "type": "string",
                             "description": "Identifier of the scene to delete.",
                         },
+                        "delete_automation_actions": {
+                            "type": "boolean",
+                            "description": "If true, will delete automation actions that reference this scene. If false, only the scene itself is deleted. Defaults to true.",
+                        },
                     },
                     "required": ["home_name", "scene_id"],
                 },
             },
         }
-

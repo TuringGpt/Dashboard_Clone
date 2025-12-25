@@ -159,18 +159,17 @@ class GenerateTriggerForFlow(Tool):
             triggers[trigger_id] = new_trigger
 
             return json.dumps(
-                {
+                 {
                     "success": True,
                     "message": f"Trigger '{trigger_id}' created for flow '{flow_id_clean}'.",
                     "trigger": {
                         "trigger_id": new_trigger["trigger_id"],
-                        "flow_id": new_trigger["flow_id"],
+                        "flow_id": new_trigger["routine_id"],
                         "trigger_type": new_trigger["trigger_type"],
-                        "flow_schedule_id": new_trigger["flow_schedule_id"],
+                        "flow_schedule_id": new_trigger["routine_schedule_id"],
                         "solar_event": new_trigger["solar_event"],
                         "device_id": new_trigger["device_id"],
                         "created_at": new_trigger["created_at"],
-                        "updated_at": new_trigger["updated_at"],
                     },
                 }
             )

@@ -61,7 +61,7 @@ Steps to follow:
 4. Create an automation schedule for automation from step 3 using add_new_schedule for the days required
 5. Create a state based trigger for the device from step 2 using create_trigger
 6. Fetch the device details for each device to add in the automation using get_device
-7. Create automation action using add_automation_action for all the devices from step 2 for which the automation applies
+7. Create automation action using add_automation_action for all the devices from step 6 for which the automation applies
 8. Enable the automation using update_automation
 
 ## SOP 5. Register / Onboard New Device into the Ecosystem
@@ -90,7 +90,7 @@ Steps to follow:
 2. If the household admin wants to add a new area, create an area using create_area
 3. If the user wants to rename the area:
    1. Fetch the area details with the existing area name using fetch_area
-   2. Update the area from step 3a using update_area
+   2. Update the area from step 3.1 using update_area
 
 ## SOP 8. Assign Devices to Areas
 
@@ -110,13 +110,13 @@ Steps to follow:
    1. Fetch the device details using get_device
    2. If the user is updating an existing favorite:
       1. Fetch the favorite details using get_device_favorite_preferences
-      2. Update the favorite using update_device_favorite_preferences for each device to be included in the favorite from step 2.b.i
+      2. Update the favorite using update_device_favorite_preferences for each device to be included in the favorite from step 2.2.1
    3. Add new device preferences using set_device_favorite_preferences
 3. If the user want to add or update favorite scene:
    1. Fetch scene details using list_scene
    2. If the user is updating an existing favorite scene:
       1. Fetch the favorite details using get_scene_favorite_preferences
-      2. Update the favorite using update_scene_favorite_preferences for each device to be included in the favorite from step 3.b.i
+      2. Update the favorite using update_scene_favorite_preferences for each scene to be included in the favorite from step 3.2.1
    3. Add new scene into existing favorites using set_scene_favorite_preferences
 
 ## SOP 10. Create Door Open Alert Rule
@@ -127,7 +127,7 @@ Steps to follow:
 2. Fetch the device details using get_device
 3. Create an automation using add_automation
 4. Create an automation schedule for automation from step 3 using add_new_schedule for the days required
-5. Create a state based trigger using create_trigger
+5. Create a state based trigger for the device from step 2 using create_trigger.
 6. Add a notification for the device using draft_notification
 7. Create automation action for the target device using add_automation_action
 8. Enable the automation using update_automation
@@ -139,19 +139,18 @@ Steps to follow:
 1. Fetch the user performing the action using find_household_user and confirm he has the role 'admin' for the household
 2. Fetch each devices to be added in the scene using get_device
 3. Create a new scene using create_scene
-4. Update the scene for each device from step 2 to be added in the scene from step 3 and activate the scene using update_scene
+4. Update the scene for each device from step 2 to be added in the scene from step 3 and enable the scene using update_scene
 
 ## SOP 12. Link Scene to Automation
 
 Steps to follow:
 
 1. Fetch the user performing the action using find_household_user and confirm he has the role 'admin' for the household
-2. Fetch each devices to be added in the scene using get_device
 3. Fetch the scene details to be added in the automation using list_scene
 4. Create an automation using add_automation
-5. Create an automation schedule for automation from step 3 using add_new_schedule for the days required
+5. Create an automation schedule for automation from step 4 using add_new_schedule for the days required
 6. Create a trigger using create_trigger
-7. Create automation action for the target device using add_automation_action
+7. Create automation action for the target scene using add_automation_action
 8. Enable the automation using update_automation
 
 ## SOP 13. Create Daily Energy Usage Summary Notification

@@ -8,7 +8,7 @@ class AddNewSchedule(Tool):
     def invoke(
         data: Dict[str, Any],
         automation_id: str,
-        time: str,
+        time: str = "00:00:00",
         on_monday: bool = False,
         on_tuesday: bool = False,
         on_wednesday: bool = False,
@@ -212,12 +212,11 @@ class AddNewSchedule(Tool):
                         },
                         "time": {
                             "type": "string",
-                            "description": "The time when the automation should trigger. Format: HH:MM:SS (24-hour format, e.g. '14:30:00').",
+                            "description": "Default 00:00:00. Specifies the time at which the automation should trigger only if the value is not 00:00:00.. Format: HH:MM:SS (24-hour format, e.g. '14:30:00').",
                         },
                     },
                     "required": [
-                        "automation_id",
-                        "time",
+                        "automation_id"
                     ],
                 },
             },
