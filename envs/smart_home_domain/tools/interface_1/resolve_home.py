@@ -56,7 +56,7 @@ class ResolveHome(Tool):
             "type": "function",
             "function": {
                 "name": "resolve_home",
-                "description": "Resolve and return home(s) associated to the user information user_email, user_id, or home_name",
+                "description": "Resolve and return home(s) associated to the user information user_email or user_id",
                 "parameters": {
                     "type": "object",
                     "properties": {

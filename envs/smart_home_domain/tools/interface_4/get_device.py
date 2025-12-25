@@ -113,15 +113,23 @@ class GetDevice(Tool):
                         "room_type": room.get("room_type"),
                     }
 
-        room_info_return = room_info.copy()
-        room_info_return["area_id"] = room_info_return.pop("room_id")
-        room_info_return["area_name"] = room_info_return.pop("room_name")
-        room_info_return["area_type"] = room_info_return.pop("room_type")
+        room_info_return = None
+        if room_info:
+            room_info_return = room_info.copy()
+            room_info_return["area_id"] = room_info_return.pop("room_id")
+            room_info_return["area_name"] = room_info_return.pop("room_name")
+            room_info_return["area_type"] = room_info_return.pop("room_type")
+
+        device_info_return = None
+        if device_info:
+            device_info_return = device_info.copy()
+            device_info_return["area_id"] = device_info_return.pop("room_id")
+            device_info_return["household_id"] = device_info_return.pop("home_id")
 
         return json.dumps(
             {
                 "success": True,
-                "device": device_info,
+                "device": device_info_return,
                 "area": room_info_return,
                 "message": f"Device '{device_name_str}' found successfully in household '{home_info.get('home_name')}'",
             }

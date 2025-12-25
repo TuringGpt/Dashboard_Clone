@@ -17,13 +17,14 @@ class GetEnergyUsage(Tool):
 
         homes = data.get("homes", {})
         home = {}
-        if home_name:
+        if home_name and not home_id:
             for h in homes.values():
                 if h.get("home_name") == home_name:
                     home_id = h.get("home_id")
                     break
-        if home_id:
-            home = homes.get(home_id)
+            if not home_id:
+                return json.dumps({"success": False, "error": "Home not found"})
+        home = homes.get(home_id, {})
         if not home:
             return json.dumps({"success": False, "error": "Home not found"})
         if start_date and not end_date:

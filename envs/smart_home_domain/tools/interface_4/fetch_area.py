@@ -93,7 +93,7 @@ class FetchArea(Tool):
         area_info_return["area_name"] = area_info_return.pop("room_name")
         area_info_return["area_type"] = area_info_return.pop("room_type")
         area_info_return["household_id"] = area_info_return.pop("home_id")
-        area_info_return["area_description"] = area_info_return.pop("room_description")        
+        # area_info_return["area_description"] = area_info_return.pop("room_description")        
 
         return json.dumps(
             {

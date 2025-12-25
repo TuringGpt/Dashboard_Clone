@@ -12,7 +12,6 @@ class UpdateAutomationTrigger(Tool):
         solar_event: Optional[str] = None,
         schedule_days: Optional[Dict[str, bool]] = None,
         onset_time: Optional[str] = None,
-        frequency: Optional[str] = None,
         attribute_name: Optional[str] = None,
         attribute_value: Optional[str] = None,
         comparison_operator: Optional[str] = None,
@@ -145,7 +144,7 @@ class UpdateAutomationTrigger(Tool):
         routines = data.get("routines")
         routine_triggers = data.get("routine_triggers")
         devices = data.get("devices")
-        routine_schedule = data.get("routine_schedules")
+        routine_schedules = data.get("routine_schedules") 
         routine_trigger_attributes = data.get("routine_trigger_attributes")
 
         if not isinstance(homes, dict):
@@ -210,11 +209,11 @@ class UpdateAutomationTrigger(Tool):
             trigger["solar_event"] = solar_val
             updates = True
 
-        if schedule_days is not None or onset_time is not None or frequency is not None:
+        if schedule_days is not None or onset_time is not None:
             if trigger_type != "time_based":
                 return json.dumps({"success": False, "error": "Schedule fields can only be updated for time_based triggers"})
-            if not isinstance(routine_schedule, dict):
-                return json.dumps({"success": False, "error": "routine_schedule store missing"})
+            if not isinstance(routine_schedules, dict): 
+                return json.dumps({"success": False, "error": "routine_schedules store missing"})
 
             schedule_dict = {}
             if schedule_days is not None:
@@ -245,16 +244,14 @@ class UpdateAutomationTrigger(Tool):
                 if not isinstance(onset_time, str) or not onset_time.strip():
                     return json.dumps({"success": False, "error": "onset_time must be a non-empty string"})
                 schedule_dict["onset_time"] = onset_time.strip()
-            if frequency is not None:
-                schedule_dict["frequency"] = frequency.strip() if isinstance(frequency, str) and frequency.strip() else None
             
             schedule_id = trigger.get("routine_schedule_id")
-            if schedule_id and schedule_id in routine_schedule:
-                schedule = routine_schedule[schedule_id]
+            if schedule_id and schedule_id in routine_schedules: 
+                schedule = routine_schedules[schedule_id] 
                 for key, value in schedule_dict.items():
                     schedule[key] = value
             else:
-                schedule_id = generate_id(routine_schedule)
+                schedule_id = generate_id(routine_schedules)  
                 schedule_record = {
                     "schedule_id": schedule_id,
                     "routine_id": trigger.get("routine_id"),
@@ -266,9 +263,8 @@ class UpdateAutomationTrigger(Tool):
                     "on_saturday": schedule_dict.get("on_saturday", False),
                     "on_sunday": schedule_dict.get("on_sunday", False),
                     "onset_time": schedule_dict.get("onset_time"),
-                    "frequency": schedule_dict.get("frequency"),
                 }
-                routine_schedule[schedule_id] = schedule_record
+                routine_schedules[schedule_id] = schedule_record 
                 trigger["routine_schedule_id"] = schedule_id
             updates = True
 
@@ -324,6 +320,13 @@ class UpdateAutomationTrigger(Tool):
 
         trigger["updated_at"] = "2025-12-19T23:59:00"
 
+        # Get the updated attributes for this trigger
+        attribute_records = []
+        if trigger_type == "device_state" and trigger_id in routine_trigger_attributes:
+            for attr_id, attr in routine_trigger_attributes.items():
+                if attr.get("trigger_id") == trigger_id:
+                    attribute_records.append(attr)
+
         return json.dumps({
             "success": True,
             "trigger": {
@@ -336,6 +339,19 @@ class UpdateAutomationTrigger(Tool):
                 "created_at": trigger.get("created_at"),
                 "updated_at": trigger.get("updated_at"),
             },
+            "attributes": (
+                None
+                if not attribute_records
+                else [
+                    {
+                        "attribute_name": a.get("attribute_name"),
+                        "attribute_value": a.get("attribute_value"),
+                        "comparison_operator": a.get("comparison_operator"),
+                        "created_at": a.get("created_at"),
+                    }
+                    for a in attribute_records
+                ]
+            ),
         })
 
     @staticmethod
@@ -344,7 +360,7 @@ class UpdateAutomationTrigger(Tool):
             "type": "function",
             "function": {
                 "name": "update_automation_trigger",
-                "description": "Update an existing automation trigger. Defines when the automation should be activated. Supports time-based (scheduled), solar event (sunrise/sunset), accessory state (sensor/accessory changes), and manual triggers. Accessory attributes are validated based on accessory type: camera (power: on/off, recording: recording/paused/stopped, motion_detection: motion_detected/clear), bulb (power: on/off, brightness: 0-100), thermostat (power: on/off, mode: heating/cooling/idle, temperature: 32-104, target_temperature: 60-90), speaker (power: on/off, playback_state: playing/paused/stopped, volume: 0-100, mute: muted/unmuted), door_lock (lock_state: locked/unlocked), motion_sensor (motion_state: motion_detected/clear), temperature_sensor (temperature: 32-104), humidity_sensor (humidity: 0-100), light_sensor (brightness_level: 0-65535), door_sensor (door_state: open/closed), water_leak_sensor (leak_state: leak_detected/no_leak), smoke_detector_sensor (smoke_state: smoke_detected/no_smoke/alarm_triggered), power_outlet (power: on/off, power_consumption: 0-3680), air_conditioner (power: on/off, mode: cooling/idle, temperature: 32-104, target_temperature: 60-85).",
+                "description": "Update an existing automation trigger. Defines when the automation should be activated. Supports time-based (scheduled), solar event (sunrise/sunset), accessory state (sensor/accessory changes), and manual triggers.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -400,17 +416,13 @@ class UpdateAutomationTrigger(Tool):
                             "type": "string",
                             "description": "Optional onset time for time_based triggers (e.g., 'HH:MM:SS').",
                         },
-                        "frequency": {
-                            "type": "string",
-                            "description": "Optional frequency for time_based triggers.",
-                        },
                         "attribute_name": {
                             "type": "string",
-                            "description": "Optional attribute name for device_state triggers.",
+                            "description": "Optional attribute name for device_state triggers. Valid attributes by accessory type: camera (power, recording, motion_detection), bulb (power, brightness), thermostat (power, mode, temperature, target_temperature), speaker (power, playback_state, volume, mute), door_lock (lock_state), motion_sensor (motion_state), temperature_sensor (temperature), humidity_sensor (humidity), light_sensor (brightness_level), door_sensor (door_state), water_leak_sensor (leak_state), smoke_detector_sensor (smoke_state), power_outlet (power, power_consumption), air_conditioner (power, mode, temperature, target_temperature).",
                         },
                         "attribute_value": {
                             "type": "string",
-                            "description": "Optional attribute value for device_state triggers.",
+                            "description": "Optional attribute value for device_state triggers. Valid values by attribute: power (on/off), recording (recording/paused/stopped), motion_detection (motion_detected/clear), brightness (0-100), mode for thermostat (heating/cooling/idle), temperature (32-104), target_temperature for thermostat (60-90), playback_state (playing/paused/stopped), volume (0-100), mute (muted/unmuted), lock_state (locked/unlocked), motion_state (motion_detected/clear), humidity (0-100), brightness_level (0-65535), door_state (open/closed), leak_state (leak_detected/no_leak), smoke_state (smoke_detected/no_smoke/alarm_triggered), power_consumption (0-3680), mode for air_conditioner (cooling/idle), target_temperature for air_conditioner (60-85).",
                         },
                         "comparison_operator": {
                             "type": "string",
@@ -421,4 +433,3 @@ class UpdateAutomationTrigger(Tool):
                 },
             },
         }
-

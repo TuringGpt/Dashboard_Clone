@@ -9,7 +9,7 @@ class CreateNewSceneAction(Tool):
         data: Dict[str, Any],
         scene_id: str,
         device_id: str,
-        device_attributes: Optional[str] = None
+        device_attributes: Optional[Dict[str, Any]] = None
     ) -> str:
         """
         Create a new scene action linking a scene to a device with optional device attributes.
@@ -111,17 +111,13 @@ class CreateNewSceneAction(Tool):
         created_attributes = []
         if device_attributes:
             try:
-                # Try to parse as JSON string
-                if isinstance(device_attributes, str):
-                    attrs_dict = json.loads(device_attributes)
-                else:
-                    attrs_dict = device_attributes
-
-                if not isinstance(attrs_dict, dict):
+                if not isinstance(device_attributes, dict):
                     return json.dumps({
                         "success": False,
-                        "error": "device_attributes must be a dictionary or JSON string representing a dictionary"
+                        "error": "device_attributes must be a dictionary"
                     })
+
+                attrs_dict = device_attributes
 
                 # Generate attribute IDs
                 attr_numeric_ids = []
@@ -153,11 +149,6 @@ class CreateNewSceneAction(Tool):
                     scene_action_attributes_dict[new_attr_id] = new_attribute
                     created_attributes.append(new_attribute)
 
-            except json.JSONDecodeError:
-                return json.dumps({
-                    "success": False,
-                    "error": "device_attributes must be a valid JSON string"
-                })
             except Exception as e:
                 return json.dumps({
                     "success": False,
@@ -176,7 +167,7 @@ class CreateNewSceneAction(Tool):
             "type": "function",
             "function": {
                 "name": "create_new_scene_action",
-                "description": "Create a new scene action linking a scene to a device. Optionally accepts device_attributes as a JSON string or dictionary to create scene action attributes. Validates that the scene and device exist before creating the action.",
+                "description": "Create a new scene action linking a scene to a device. Optionally accepts device_attributes as a JSON object (dictionary) to create scene action attributes. Validates that the scene and device exist before creating the action. Possible device_attributes depend on device_type: camera (power, recording, motion_detection), bulb (power, brightness), thermostat (power, mode, temperature, target_temperature), speaker (power, playback_state, volume, mute), door_lock (lock_state), motion_sensor (motion_state), temperature_sensor (temperature), humidity_sensor (humidity), light_sensor (brightness_level), door_sensor (door_state), water_leak_sensor (leak_state), smoke_detector_sensor (smoke_state), power_outlet (power, power_consumption), air_conditioner (power, mode, temperature, target_temperature).",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -189,8 +180,83 @@ class CreateNewSceneAction(Tool):
                             "description": "The ID of the device to control in this scene action."
                         },
                         "device_attributes": {
-                            "type": "string",
-                            "description": "Optional JSON string representing a dictionary of device attributes (e.g., {\"power\": \"on\", \"brightness\": 75})."
+                            "type": "object",
+                            "description": "Optional JSON object (dictionary) of device attributes. Attribute values are numeric without units (e.g., brightness 0-100, temperature 32-104, volume 0-100).",
+                            "properties": {
+                                "power": {
+                                    "type": "string",
+                                    "description": "Power state (for camera, bulb, thermostat, speaker, power_outlet, air_conditioner): possible values: on, off"
+                                },
+                                "recording": {
+                                    "type": "string",
+                                    "description": "Recording state (for camera): possible values: recording, paused, stopped"
+                                },
+                                "motion_detection": {
+                                    "type": "string",
+                                    "description": "Motion detection state (for camera): possible values: motion_detected, clear"
+                                },
+                                "brightness": {
+                                    "type": "number",
+                                    "description": "Brightness level 0 to 100 (for bulb)"
+                                },
+                                "mode": {
+                                    "type": "string",
+                                    "description": "Mode (for thermostat: heating/cooling/idle; for air_conditioner: cooling/idle): possible values: heating, cooling, idle"
+                                },
+                                "temperature": {
+                                    "type": "number",
+                                    "description": "Temperature 32 to 104 (for thermostat, temperature_sensor, air_conditioner)"
+                                },
+                                "target_temperature": {
+                                    "type": "number",
+                                    "description": "Target temperature 60 to 90 for thermostat, 60 to 85 for air_conditioner"
+                                },
+                                "playback_state": {
+                                    "type": "string",
+                                    "description": "Playback state (for speaker): possible values: playing, paused, stopped"
+                                },
+                                "volume": {
+                                    "type": "number",
+                                    "description": "Volume level 0 to 100 (for speaker): possible values: 0-100 for speaker"
+                                },
+                                "mute": {
+                                    "type": "string",
+                                    "description": "Mute state (for speaker): possible values: muted, unmuted"
+                                },
+                                "lock_state": {
+                                    "type": "string",
+                                    "description": "Lock state (for door_lock): possible values: locked, unlocked"
+                                },
+                                "motion_state": {
+                                    "type": "string",
+                                    "description": "Motion state (for motion_sensor): possible values: motion_detected, clear"
+                                },
+                                "humidity": {
+                                    "type": "number",
+                                    "description": "Humidity level 0 to 100 (for humidity_sensor)"
+                                },
+                                "brightness_level": {
+                                    "type": "number",
+                                    "description": "Brightness level 0 to 65535 (for light_sensor)"
+                                },
+                                "door_state": {
+                                    "type": "string",
+                                    "description": "Door state (for door_sensor): possible values: open, closed"
+                                },
+                                "leak_state": {
+                                    "type": "string",
+                                    "description": "Leak state (for water_leak_sensor): possible values: leak_detected, no_leak"
+                                },
+                                "smoke_state": {
+                                    "type": "string",
+                                    "description": "Smoke state (for smoke_detector_sensor): possible values: smoke_detected, no_smoke, alarm_triggered"
+                                },
+                                "power_consumption": {
+                                    "type": "number",
+                                    "description": "Power consumption 0 to 3680 (for power_outlet)"
+                                }
+                            },
+                            "additionalProperties": False
                         }
                     },
                     "required": ["scene_id", "device_id"]

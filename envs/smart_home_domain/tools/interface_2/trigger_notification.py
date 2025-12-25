@@ -8,12 +8,12 @@ class TriggerNotification(Tool):
     def invoke(
         data: Dict[str, Any],
         user_id: str,
-        home_id: str,
         notification_type: str,
         title: str,
         message: str,
-        muted: bool,
-        related_device_id: str,
+        home_id: Optional[str] = None,
+        muted: Optional[bool] = False,
+        related_device_id: Optional[str] = None,
         status: Optional[str] = None
     ) -> str:
         """
@@ -60,12 +60,6 @@ class TriggerNotification(Tool):
                 "error": "user_id is required"
             })
 
-        if not home_id:
-            return json.dumps({
-                "success": False,
-                "error": "home_id is required"
-            })
-
         if not notification_type:
             return json.dumps({
                 "success": False,
@@ -85,30 +79,32 @@ class TriggerNotification(Tool):
             })
 
         user_id_str = str(user_id).strip()
-        home_id_str = str(home_id).strip()
+        home_id_str = str(home_id).strip() if home_id else None
         notification_type_str = str(notification_type).strip().lower()
         title_str = str(title).strip()
         message_str = str(message).strip()
 
-        # Validate muted is a boolean or string "true"/"false"
-        if isinstance(muted, bool):
-            muted_bool = muted
-        elif isinstance(muted, str):
-            muted_str = muted.strip().lower()
-            if muted_str == "true":
-                muted_bool = True
-            elif muted_str == "false":
-                muted_bool = False
+        # Validate muted if provided
+        muted_bool = None
+        if muted is not None:
+            if isinstance(muted, bool):
+                muted_bool = muted
+            elif isinstance(muted, str):
+                muted_str = muted.strip().lower()
+                if muted_str == "true":
+                    muted_bool = True
+                elif muted_str == "false":
+                    muted_bool = False
+                else:
+                    return json.dumps({
+                        "success": False,
+                        "error": "muted must be a boolean value"
+                    })
             else:
                 return json.dumps({
                     "success": False,
-                    "error": "muted must be a boolean value "
+                    "error": "muted must be a boolean value"
                 })
-        else:
-            return json.dumps({
-                "success": False,
-                "error": "muted must be a boolean value "
-            })
 
         # Validate notification_type
         if notification_type_str not in ["alert", "energy_summary"]:
@@ -124,8 +120,8 @@ class TriggerNotification(Tool):
                 "error": f"User with ID '{user_id_str}' not found"
             })
 
-        # Validate home exists
-        if home_id_str not in homes_dict:
+        # Validate home exists if provided
+        if home_id_str and home_id_str not in homes_dict:
             return json.dumps({
                 "success": False,
                 "error": f"Home with ID '{home_id_str}' not found"
@@ -203,7 +199,7 @@ class TriggerNotification(Tool):
                         },
                         "home_id": {
                             "type": "string",
-                            "description": "The ID of the home associated with the notification."
+                            "description": "The ID of the home associated with the notification (optional)."
                         },
                         "notification_type": {
                             "type": "string",
@@ -219,18 +215,18 @@ class TriggerNotification(Tool):
                         },
                         "muted": {
                             "type": "boolean",
-                            "description": "Whether the notification is muted."
+                            "description": "Whether the notification is muted (optional)."
                         },
                         "related_device_id": {
                             "type": "string",
-                            "description": "The ID of the device related to the notification, if any."
+                            "description": "The ID of the device related to the notification if it is only one device (optional)."
                         },
                         "status": {
                             "type": "string",
                             "description": "Optional status: 'pending', 'sent', 'failed', or 'read'. Defaults to 'pending'."
                         }
                     },
-                    "required": ["user_id", "home_id", "notification_type", "title", "message", "muted", "related_device_id"]
+                    "required": ["user_id", "notification_type", "title", "message"]
                 }
             }
         }

@@ -1,15 +1,29 @@
 import json
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from tau_bench.envs.tool import Tool
 
 
 class UpdateDeviceLocation(Tool):
     @staticmethod
-    def invoke(data: Dict[str, Any], device_id: str, room_id: str) -> str:
+    def invoke(
+        data: Dict[str, Any],
+        device_id: str,
+        room_id: Optional[str] = None,
+        room_name: Optional[str] = None,
+    ) -> str:
         if not isinstance(data, dict):
             return json.dumps({"success": False, "error": "Invalid data format"})
-        
         devices = data.get("devices", {})
+        if room_name and not room_id:
+            # Find room_id by room_name
+            rooms = data.get("rooms", {})
+            for r in rooms.values():
+                if r.get("room_name") == room_name:
+                    room_id = r.get("room_id")
+                    break
+            if not room_id:
+                return json.dumps({"success": False, "error": "Room not found"})
+
         if device_id:
             device = devices.get(device_id)
         else:
@@ -19,7 +33,9 @@ class UpdateDeviceLocation(Tool):
 
         # verify the room_id exists in data
         rooms = data.get("rooms", {})
-        if room_id not in rooms:
+        room = rooms.get(room_id)
+
+        if not room:
             return json.dumps({"success": False, "error": "Room not found"})
 
         # Update the device location
@@ -30,7 +46,6 @@ class UpdateDeviceLocation(Tool):
         )
         devices[device_id] = updated_device
         data["devices"] = devices
-        
         return json.dumps({"success": True, "device": updated_device})
 
     @staticmethod
@@ -43,6 +58,7 @@ class UpdateDeviceLocation(Tool):
                 "parameters": {
                     "type": "object",
                     "properties": {
+                        # Define your parameters here
                         "device_id": {
                             "type": "string",
                             "description": "The ID of the device to be updated.",
@@ -51,8 +67,12 @@ class UpdateDeviceLocation(Tool):
                             "type": "string",
                             "description": "The new room ID for the device.",
                         },
+                        "room_name": {
+                            "type": "string",
+                            "description": "The new room name for the device.",
+                        },
                     },
-                    "required": ["device_id", "room_id"],
+                    "required": ["device_id"],
                 },
             },
         }

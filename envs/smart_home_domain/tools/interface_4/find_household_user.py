@@ -109,12 +109,30 @@ class FindHouseholdUser(Tool):
                 home_user_info["home_user_id"] = str(hu_id)
                 break
 
+        if not home_user_info:
+            return json.dumps(
+                {
+                    "success": False,
+                    "error": f"User with email '{email_str}' is not associated with household '{household_name_str}'",
+                }
+            )
+
+        if home_user_info:
+            home_user_info_return = home_user_info.copy()
+            home_user_info_return["household_user_id"] = home_user_info_return.pop("home_user_id")
+            home_user_info_return["household_id"] = home_user_info_return.pop("home_id")
+
+        if home_info:
+            home_info_return = home_info.copy()
+            home_info_return["household_id"] = home_info_return.pop("home_id")
+            home_info_return["household_name"] = home_info_return.pop("home_name")
+
         return json.dumps(
             {
                 "success": True,
                 "user": user_info,
-                "household_user": home_user_info,
-                "household": home_info,
+                "household_user": home_user_info_return,
+                "household": home_info_return,
             }
         )
 
@@ -126,10 +144,9 @@ class FindHouseholdUser(Tool):
                 "name": "find_household_user",
                 "description": (
                     "Find and retrieve household user information by email and household name. "
-                    "Validates that the user exists and has 'admin' role in the specified household. "
+                    "Validates that the user and household exists"
                     "Returns user details including user_id, role, and household information. "
-                    "Returns an error if the household doesn't exist, the user is not found in the specified household, "
-                    "or the user does not have 'admin' role."
+                    "Returns an error if the household doesn't exist, user doesn't exist or the user is not found in the specified household, "
                 ),
                 "parameters": {
                     "type": "object",

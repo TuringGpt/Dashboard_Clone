@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 from tau_bench.envs.tool import Tool
 
 class ListHomeUsers(Tool):
@@ -7,10 +7,9 @@ class ListHomeUsers(Tool):
     def invoke(
         data: Dict[str, Any],
         home_name: str,
-        role: Optional[str] = None,
     ) -> str:
         """
-        List users in a home, optionally filtered by role.
+        List users in a home.
         """
 
         if not isinstance(data, dict):
@@ -42,20 +41,9 @@ class ListHomeUsers(Tool):
         if not home_id:
             return json.dumps({"success": False, "error": f"Home '{home_name}' not found"})
 
-        role_filter = None
-        if role:
-            if not isinstance(role, str):
-                return json.dumps({"success": False, "error": "role must be a string"})
-            role_filter = role.strip().lower()
-            if role_filter not in {"admin", "member", "guest"}:
-                return json.dumps({"success": False, "error": "role must be one of admin, member, guest"})
-
         result_users = []
         for home_user_id, home_user in home_users.items():
             if home_user.get("home_id") == home_id:
-                if role_filter and home_user.get("role") != role_filter:
-                    continue
-                
                 user_id = home_user.get("user_id")
                 user = users.get(user_id, {})
                 
@@ -78,7 +66,7 @@ class ListHomeUsers(Tool):
             "type": "function",
             "function": {
                 "name": "list_home_users",
-                "description": "List all users associated with a home, optionally filtered by role.",
+                "description": "List all users associated with a home.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -86,13 +74,8 @@ class ListHomeUsers(Tool):
                             "type": "string",
                             "description": "Name of the home.",
                         },
-                        "role": {
-                            "type": "string",
-                            "description": "Optional role filter; allowed values: admin, member, guest.",
-                        },
                     },
                     "required": ["home_name"],
                 },
             },
         }
-

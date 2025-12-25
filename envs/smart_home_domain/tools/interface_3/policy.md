@@ -165,7 +165,7 @@ Steps to follow:
 2. Validate that the household where the scene will be created exists, and confirm that the acting user from Step 1 is an admin in that household using get_user_home_info.
 3. Retrieve the list of devices available within the household using discover_household_devices and ensure devices exist and are online.
 4. Add the scene metadata for the household using create_scene_definition.
-5. From the list of devices retrieved in Step 4, identify the exact devices that will be used in the scene actions.
+5. From the list of devices retrieved in Step 3, identify the exact devices that will be used in the scene actions.
 6. For each device selected in Step 5, add an action to the scene using add_scene_action, and configure the device state for that action using set_scene_device_state.
 
 ## SOP 14. Duplicate a Scene

@@ -113,7 +113,7 @@ Steps to follow:
 3. Fetch the target device using get_devices to verify the device's existence.
 4. Retrieve current device configuration using get_device_state.
 5. To update device name:
-   1. Validate that the new device name is unique using the data from step 3\.
+   1. Validate that the new device name is unique using the data from step 3.
    2. Use update_device_name to update the device’s name.
 6. To change a device’s room use update_device_location.
 
