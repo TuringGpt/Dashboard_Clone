@@ -94,6 +94,17 @@ PUBLIC_ROUTES = {
     '/login/callback',
     '/logout',
     '/static',
+    
+    '/interface_connections',
+    '/instruction_validation',
+    '/instruction_relevant_actions_or_policies',
+    '/index',
+    '/tracker',
+    '/task-framework',
+    '/db_utilities',
+    '/sop_validator',
+    '/sop_collection_validator',
+    '/tool_schema_extractor'
 }
 
 REDIRECT_ROUTES = {
