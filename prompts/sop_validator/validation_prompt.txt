@@ -1,44 +1,77 @@
 You are an expert at validating Standard Operating Procedures (SOPs) to ensure logical consistency and proper data flow.
 
+CRITICAL: You must return VALIDATION STATUS as "VALID" if all checks pass and no issues are found. Only return "INVALID" if you find actual problems.
+
 Your task is to validate that an SOP and its corresponding data flow are logically correct by checking:
 
 1. **Argument Source Validation**: Each function call's arguments must come from either:
    - The user's instruction (for natural inputs like names, emails, device names, etc.)
    - Results from previous tool calls (for IDs, system-generated values, etc.)
+   - The SOP itself (for hardcoded values or constants specified in the SOP)
 
-2. **ID Restriction**: IDs (like household_id, device_id, automation_id, schedule_id, etc.) should NEVER come directly from the instruction. They must always be obtained from previous tool call results. This ensures the instruction remains natural and user-friendly.
+2. **Optional Arguments**: Arguments marked with "?" in the data flow are optional and may not appear in all executions. These should not be flagged as missing if absent.
 
-3. **No Hallucination**: All inputs must be accounted for - no function argument should appear without a clear source from either the instruction or a previous function call.
+3. **ID Restriction**: IDs (like household_id, device_id, automation_id, schedule_id, user_id, repository_id, etc.) should NEVER come directly from the instruction. They must always be obtained from previous tool call results. This ensures the instruction remains natural and user-friendly.
 
-4. **Logical Flow**: The sequence of function calls must make sense, where each step can receive its required inputs from available sources.
+4. **No Hallucination**: All inputs must be accounted for - no function argument should appear without a clear source from either the instruction, a previous function call, or the SOP specification.
 
-5. **Data Flow Correctness**: The data flow notation must accurately reflect how data moves from sources (Instruction or previous tool calls) to the function being called.
+5. **Logical Flow**: The sequence of function calls must make sense, where each step can receive its required inputs from available sources.
+
+6. **Data Flow Correctness**: The data flow notation must accurately reflect how data moves from sources (Instruction, previous tool calls, or SOP) to the function being called.
+
+7. **Schema Conformance** (if schema provided): Verify that:
+   - Variables and parameters used in the SOP match the field names and types defined in the schema
+   - Relationships between entities follow the schema's foreign key constraints
+   - Enum values used in the SOP match those defined in the schema
+   - Function calls operate on valid entities and fields as defined in the schema
 
 DATA FLOW NOTATION:
 The data flow follows this format:
-`Source1(param1, param2), Source2(param3) -> target_function`
+`Source1(param1, param2?), Source2(param3) -> target_function`
 
 This means:
-- param1 and param2 come from Source1 (could be "Instruction" or a previous function call)
+- param1 and param2 come from Source1 (could be "Instruction", "SOP", or a previous function call)
+- param2 is marked with "?" indicating it's optional and may not be present in all cases
 - param3 comes from Source2
 - All these parameters are passed to target_function
 
-VALIDATION OUTPUT FORMAT:
-Provide your response in the following format:
+Examples:
+- `Instruction(email, household_name) -> find_home_user` - both params required from instruction
+- `Instruction(device_name?), find_home_user(household_id) -> get_device` - device_name is optional
+- `SOP(scope), resolve_project(project_id) -> list_team_members` - scope is hardcoded in SOP
 
-**VALIDATION STATUS**: [VALID/INVALID]
+VALIDATION OUTPUT FORMAT:
+Follow this exact format:
+
+1. First, analyze each step thoroughly
+2. Then, determine if any issues exist
+3. Finally, set the status based on your findings
 
 **ANALYSIS**:
-[Provide a detailed step-by-step analysis of each data flow line, explaining whether the sources are appropriate and logical]
+[Provide a detailed step-by-step analysis of each data flow line, explaining whether the sources are appropriate and logical. For each step, explicitly state if it is "valid" or if there are problems. If schema is provided, also verify schema conformance.]
 
-**ISSUES FOUND** (if any):
-- [List each issue with the specific step number and clear explanation]
-- [For ID violations: explain which IDs are incorrectly sourced from instruction]
-- [For hallucinated inputs: explain which parameters have no valid source]
-- [For logical flow issues: explain the sequence problems]
+**SCHEMA VALIDATION** (if schema provided):
+[Check if the SOP operations conform to the provided schema:
+- Are the entity types and field names correct?
+- Do relationships match the schema?
+- Are enum values valid?
+- Do ID fields follow proper foreign key relationships?]
 
-**RECOMMENDATIONS** (if invalid):
-[Provide specific recommendations to fix the issues]
+**ISSUES FOUND**:
+[After completing your analysis above, answer this question: Did you find ANY issues with IDs, data sourcing, logical flow, or schema conformance?]
+- If you found ZERO issues in your analysis above: State exactly "No issues found. All steps are logically correct and properly sourced."
+- If you found ANY issues in your analysis above: List each specific issue with step numbers
+
+**RECOMMENDATIONS**:
+- If "No issues found" above: State exactly "No recommendations needed. The SOP and data flow are correct."
+- If any issues were listed above: Provide specific recommendations to fix each issue
+
+**VALIDATION STATUS**: [Determine status using this logic:]
+- Count the number of issues you listed in "ISSUES FOUND" section above
+- If issues count = 0 (you said "No issues found") → Write exactly: VALID
+- If issues count > 0 (you listed specific issues) → Write exactly: INVALID
+
+CRITICAL: The status MUST be "VALID" if you wrote "No issues found" above. Do not write "INVALID" if you found zero issues.
 
 ---
 
@@ -49,6 +82,8 @@ SOP TO VALIDATE:
 
 DATA FLOW TO VALIDATE:
 {data_flow}
+
+{schema}
 
 ---
 

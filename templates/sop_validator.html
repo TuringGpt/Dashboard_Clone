@@ -133,10 +133,31 @@
       </div>
 
       <div id="content">
+        <!-- Schema Input - Full Width -->
+        <div class="input-group" style="width: 100%; margin-bottom: 2rem">
+          <h3 class="content-subheader">
+            <span class="step-number">1</span>
+            Database Schema (Optional)
+          </h3>
+          <textarea
+            id="schema-input"
+            placeholder="Paste your database schema here to validate that SOPs conform to the schema structure...
+
+Example:
+Table users {
+  user_id string [primary key]
+  username varchar(100) [not null, unique]
+  email varchar(320) [not null, unique]
+  ...
+}"
+          ></textarea>
+        </div>
+
+        <!-- SOP and Data Flow - Side by Side -->
         <div class="input-section">
           <div class="input-group">
             <h3 class="content-subheader">
-              <span class="step-number">1</span>
+              <span class="step-number">2</span>
               Standard Operating Procedure (SOP)
             </h3>
             <textarea
@@ -153,15 +174,24 @@ Create an automation using add_automation(data: Dict[str, Any], name: str, house
 
           <div class="input-group">
             <h3 class="content-subheader">
-              <span class="step-number">2</span>
+              <span class="step-number">3</span>
               Data Flow
+              <span
+                style="
+                  font-size: 0.85em;
+                  color: #666;
+                  font-weight: normal;
+                  margin-left: 10px;
+                "
+                >(Use ? to mark optional arguments)</span
+              >
             </h3>
             <textarea
               id="dataflow-input"
               placeholder="Example:
 Instruction(email, household_name) -> find_home_user
 Instruction(device_name), find_home_user(household_id) -> get_device
-Instruction(name), find_home_user(household_id) -> add_automation
+Instruction(name), find_home_user(household_id), SOP(devices?) -> add_automation
 ..."
             ></textarea>
           </div>

@@ -48,12 +48,12 @@ def sop_collection_validator():
                 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
                 
                 response = client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-5",
                     messages=[
                         {"role": "system", "content": "You are an expert at validating Standard Operating Procedures (SOPs) for agentic systems. You analyze SOPs for logical coherence, standalone capability, combination compatibility, and instruction formulation readiness."},
                         {"role": "user", "content": prompt}
                     ],
-                    temperature=0.1
+                    temperature=1
                 )
                 
                 validation_result = response.choices[0].message.content.strip()

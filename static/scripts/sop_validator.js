@@ -2,6 +2,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const validateButton = document.getElementById('validateButton');
     const sopInput = document.getElementById('sop-input');
     const dataflowInput = document.getElementById('dataflow-input');
+    const schemaInput = document.getElementById('schema-input');
     const resultsSection = document.getElementById('results-section');
     const validationStatus = document.getElementById('validation-status');
     const validationOutput = document.getElementById('validation-output');
@@ -11,6 +12,7 @@ document.addEventListener('DOMContentLoaded', function() {
     validateButton.addEventListener('click', async function() {
         const sop = sopInput.value.trim();
         const dataFlow = dataflowInput.value.trim();
+        const schema = schemaInput.value.trim();
 
         // Validation
         if (!sop || !dataFlow) {
@@ -32,7 +34,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({
                     action: 'validate_sop',
                     sop: sop,
-                    data_flow: dataFlow
+                    data_flow: dataFlow,
+                    schema: schema
                 })
             });
 
@@ -44,9 +47,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Parse the validation result to determine status
                 const validationResult = data.validation_result;
-                const isValid = validationResult.toUpperCase().includes('VALIDATION STATUS**: VALID') || 
-                               validationResult.toUpperCase().includes('VALIDATION STATUS: VALID') ||
-                               validationResult.toUpperCase().includes('**VALIDATION STATUS**: [VALID]');
+
+                // Check for INVALID first to avoid substring matching issue (INVALID contains VALID)
+                const isInvalid = validationResult.toUpperCase().includes('VALIDATION STATUS: INVALID') || 
+                                 validationResult.toUpperCase().includes('VALIDATION STATUS**: INVALID') ||
+                                 validationResult.toUpperCase().includes('**VALIDATION STATUS**: INVALID');
+                
+                const isValid = !isInvalid && (
+                    validationResult.toUpperCase().includes('VALIDATION STATUS: VALID') ||
+                    validationResult.toUpperCase().includes('VALIDATION STATUS**: VALID') ||
+                    validationResult.toUpperCase().includes('**VALIDATION STATUS**: VALID')
+                );
                 
                 // Set status badge
                 validationStatus.className = 'status-badge ' + (isValid ? 'status-valid' : 'status-invalid');
