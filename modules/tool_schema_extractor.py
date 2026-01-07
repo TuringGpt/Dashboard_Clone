@@ -48,12 +48,12 @@ def tool_schema_extractor():
                 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
                 
                 response = client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-5",
                     messages=[
                         {"role": "system", "content": "You are an expert at analyzing function usage patterns across Standard Operating Procedures and extracting correct tool schemas with required/optional argument specifications. You carefully track argument usage percentages and provide clear rationale for each classification."},
                         {"role": "user", "content": prompt}
                     ],
-                    temperature=0.1
+                    temperature=1
                 )
                 
                 extraction_result = response.choices[0].message.content.strip()
