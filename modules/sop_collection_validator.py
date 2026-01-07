@@ -48,7 +48,7 @@ def sop_collection_validator():
                 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
                 
                 response = client.chat.completions.create(
-                    model="gpt-5",
+                    model="gpt-4o",
                     messages=[
                         {"role": "system", "content": "You are an expert at validating Standard Operating Procedures (SOPs) for agentic systems. You analyze SOPs for logical coherence, standalone capability, combination compatibility, and instruction formulation readiness."},
                         {"role": "user", "content": prompt}
@@ -64,6 +64,11 @@ def sop_collection_validator():
                 }), 200
                 
             except Exception as e:
+                # Log the detailed error for debugging
+                import traceback
+                error_details = traceback.format_exc()
+                print(f"Error validating SOP collection: {error_details}")
+                
                 return jsonify({
                     'status': 'error',
                     'message': f'Failed to validate SOP collection: {str(e)}'
