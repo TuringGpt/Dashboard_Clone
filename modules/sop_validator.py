@@ -69,6 +69,11 @@ def sop_validator():
                 }), 200
                 
             except Exception as e:
+                # Log the detailed error for debugging
+                import traceback
+                error_details = traceback.format_exc()
+                print(f"Error validating SOP: {error_details}")
+                
                 return jsonify({
                     'status': 'error',
                     'message': f'Failed to validate SOP: {str(e)}'
