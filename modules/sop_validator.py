@@ -20,6 +20,7 @@ def sop_validator():
         if action == "validate_sop":
             sop = data.get('sop', '')
             data_flow = data.get('data_flow', '')
+            schema = data.get('schema', '')
             
             if not sop or not data_flow:
                 return jsonify({
@@ -39,10 +40,12 @@ def sop_validator():
             with open(validation_prompt_path, 'r') as file:
                 validation_prompt = file.read()
             
-            # Format the prompt with the provided SOP and data flow
+            # Format the prompt with the provided SOP, data flow, and schema
+            schema_section = f"\n---\n\nDATABASE SCHEMA:\n{schema}\n" if schema else "\n---\n\nDATABASE SCHEMA: Not provided\n"
             prompt = validation_prompt.format(
                 sop=sop,
-                data_flow=data_flow
+                data_flow=data_flow,
+                schema=schema_section
             )
             
             # Call OpenAI API
@@ -50,12 +53,12 @@ def sop_validator():
                 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
                 
                 response = client.chat.completions.create(
-                    model="gpt-4o",
+                    model="gpt-5",
                     messages=[
                         {"role": "system", "content": "You are an expert at validating Standard Operating Procedures (SOPs) and their data flows. You ensure logical consistency, proper argument sourcing, and identify any issues with data flow."},
                         {"role": "user", "content": prompt}
                     ],
-                    temperature=0.1
+                    temperature=1
                 )
                 
                 validation_result = response.choices[0].message.content.strip()
