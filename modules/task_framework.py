@@ -2,10 +2,46 @@ import os
 import json
 import ast
 import re
+from pathlib import Path
 from typing import Dict, Any
 from flask import Blueprint, render_template, request, jsonify, session, g, Response
 
 task_framework_bp = Blueprint('task_framework', __name__)
+
+# Base path for environments - used to validate path traversal attempts
+ENVS_BASE_PATH = Path("envs").resolve()
+
+
+def validate_path_component(component):
+    """
+    Validate a path component (like environment or interface name) to prevent path traversal.
+    Returns True if the component is safe, False otherwise.
+    """
+    if not component or not isinstance(component, str):
+        return False
+    # Check for path traversal patterns
+    if '..' in component or '/' in component or '\\' in component:
+        return False
+    # Check for null bytes
+    if '\x00' in component:
+        return False
+    # Only allow alphanumeric characters, underscores, and hyphens
+    if not re.match(r'^[a-zA-Z0-9_-]+$', component):
+        return False
+    return True
+
+
+def validate_path_within_base(constructed_path, base_path):
+    """
+    Validate that a constructed path stays within the expected base directory.
+    Returns True if safe, False if path traversal is detected.
+    """
+    try:
+        resolved_path = Path(constructed_path).resolve()
+        base_resolved = Path(base_path).resolve()
+        return resolved_path.is_relative_to(base_resolved)
+    except (ValueError, OSError):
+        return False
 
 
 
@@ -189,9 +225,21 @@ def env_interface():
             
             environment = passed_inputs.get('environment') if passed_inputs else None
             interface = passed_inputs.get('interface') if passed_inputs else None
-            
+
+            # Validate environment and interface to prevent path traversal attacks
+            if environment and not validate_path_component(environment):
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Invalid environment name'
+                }), 400
+            if interface and not validate_path_component(interface):
+                return jsonify({
+                    'status': 'error',
+                    'message': 'Invalid interface name'
+                }), 400
+
             # global last_environment, last_interface, data
-            
+
             # print(environment, session.get("environment"))
             if environment != session.get("environment"):
                 g.data.clear()
@@ -216,6 +264,14 @@ def env_interface():
                 ENVS_PATH = "envs"
                 TOOLS_PATH = f"{ENVS_PATH}/{environment}/tools"
                 INTERFACE_PATH = f"{TOOLS_PATH}/interface_{interface}"
+
+                # Verify the constructed path is within the allowed base directory
+                if not validate_path_within_base(INTERFACE_PATH, ENVS_BASE_PATH):
+                    return jsonify({
+                        'status': 'error',
+                        'message': 'Invalid path specified'
+                    }), 400
+
                 API_files = os.listdir(INTERFACE_PATH)
                 invoke_methods = []
                 functionsInfo = []
@@ -426,8 +482,24 @@ def execute_api():
     # print(passed_data)
     # print(passed_data.get('environment'))
     environment = passed_data.get('environment', session.get("environment"))
+
+    # Validate environment to prevent path traversal attacks
+    if not validate_path_component(environment):
+        return jsonify({
+            'status': 'error',
+            'message': 'Invalid environment name'
+        }), 400
+
     ENVS_PATH = "envs"
     DATA_PATH = f"{ENVS_PATH}/{environment}/data"
+
+    # Verify the constructed path is within the allowed base directory
+    if not validate_path_within_base(DATA_PATH, ENVS_BASE_PATH):
+        return jsonify({
+            'status': 'error',
+            'message': 'Invalid path specified'
+        }), 400
+
     data_files = os.listdir(DATA_PATH)
     # print("Loaded data:")
     for data_file in data_files:
