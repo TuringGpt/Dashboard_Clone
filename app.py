@@ -123,10 +123,14 @@ def load_session_data():
 # Configuration
 def get_oauth_config():
     """Get OAuth configuration based on current request host"""
-    if "dashboard-omega-swart-74.vercel.app" in request.host:
+    # Extract host without port for comparison
+    host = request.host.split(':')[0]
+
+    # Use exact match or endswith for subdomain matching to prevent host spoofing
+    if host == "dashboard-omega-swart-74.vercel.app":
         client_id = os.environ.get("GOOGLE_CLIENT_ID")
         client_secret = os.environ.get("GOOGLE_CLIENT_SECRET")
-    elif "turing-amazon-toolings.turing.com" in request.host:
+    elif host == "turing-amazon-toolings.turing.com" or host.endswith(".turing-amazon-toolings.turing.com"):
         client_id = os.environ.get("GOOGLE_CLIENT_ID_3")
         client_secret = os.environ.get("GOOGLE_CLIENT_SECRET_3")
     else:
@@ -134,7 +138,6 @@ def get_oauth_config():
         client_secret = os.environ.get("GOOGLE_CLIENT_SECRET_2")
     
     if not client_id or not client_secret:
-        print(f"OAuth credentials not found: {client_id}, {client_secret}")
         raise ValueError("OAuth credentials not configured properly")
     
     return client_id, client_secret
@@ -168,8 +171,7 @@ def get_google_provider_cfg():
     try:
         response = requests.get(GOOGLE_DISCOVERY_URL, timeout=5)
         return response.json()
-    except requests.RequestException as e:
-        print(f"Failed to get Google provider config: {e}")
+    except requests.RequestException:
         return None
 
 @app.route("/login")
@@ -195,9 +197,8 @@ def login():
             scope=["openid", "email", "profile"],
         )
         return redirect(request_uri)
-    except Exception as e:
-        print(f"Login error: {e}")
-        return f"OAuth configuration error: {e}", 500
+    except Exception:
+        return "OAuth configuration error", 500
 
 @app.route("/login/callback")
 def callback():
@@ -237,7 +238,7 @@ def callback():
         )
 
         if not token_response.ok:
-            return f"Token request failed: {token_response.text}", 400
+            return "Token request failed", 400
 
         # Parse the tokens
         client.parse_request_body_response(json.dumps(token_response.json()))
@@ -248,7 +249,7 @@ def callback():
         userinfo_response = requests.get(uri, headers=headers, data=body, timeout=10)
 
         if not userinfo_response.ok:
-            return f"User info request failed: {userinfo_response.text}", 400
+            return "User info request failed", 400
 
         user_info = userinfo_response.json()
         
@@ -274,9 +275,8 @@ def callback():
         login_user(user)
         return redirect(url_for("index"))
         
-    except Exception as e:
-        print(f"Callback error: {e}")
-        return f"Authentication error: {e}", 500
+    except Exception:
+        return "Authentication error", 500
 
 @app.route("/logout")
 @login_required

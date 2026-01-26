@@ -63,15 +63,10 @@ def tool_schema_extractor():
                     'extraction_result': extraction_result
                 }), 200
                 
-            except Exception as e:
-                # Log the detailed error for debugging
-                import traceback
-                error_details = traceback.format_exc()
-                print(f"Error extracting tool schemas: {error_details}")
-                
+            except Exception:
                 return jsonify({
                     'status': 'error',
-                    'message': f'Failed to extract tool schemas: {str(e)}'
+                    'message': 'Failed to extract tool schemas'
                 }), 500
         else:
             return jsonify({
