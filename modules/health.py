@@ -21,9 +21,8 @@ def health_check():
                 'redis': 'connected' if redis_client else 'not_configured'
             }
         }, 200
-    except Exception as e:
+    except Exception:
         return {
             'status': 'unhealthy',
-            'error': str(e),
             'timestamp': str(datetime.now())
         }, 503
