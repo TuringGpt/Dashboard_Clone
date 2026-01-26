@@ -25,3 +25,5 @@ gunicorn
 # typing-extensions>=4.7.0
 ## ADDED ##
 mysql-connector-python
+# Security fix: CVE-2024-7254 - JSON recursion depth bypass
+protobuf>=5.28.2
