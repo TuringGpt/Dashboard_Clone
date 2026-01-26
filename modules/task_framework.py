@@ -202,8 +202,8 @@ def extract_file_info(file_path: str) -> Dict[str, Any]:
 
         return function_info, invoke_method, imports
         
-    except Exception as e:
-        return {"error": f"Failed to process file: {str(e)}"}
+    except Exception:
+        return {"error": "Failed to process file"}
 ######################## END UTILITY FUNCTIONS ##############################
 
 
@@ -363,11 +363,10 @@ def env_interface():
                     'message': 'Missing environment or interface data'
                 }), 400
                 
-        except Exception as e:
-            # print(f"Error processing request: {str(e)}")
+        except Exception:
             return jsonify({
                 'status': 'error',
-                'message': f'{str(e)}'
+                'message': 'An error occurred while processing the request'
             }), 500
     
     # Handle GET requests
@@ -618,10 +617,11 @@ def execute_api():
         #     'output': json.loads(result) if isinstance(result, str) else result
         # }), 200
     except Exception as e:
-        # print(f"Error executing API {api_name}: {str(e)}")
-        return_message = str(e)
-        if "expected an indented block" in return_message:
+        error_str = str(e)
+        if "expected an indented block" in error_str:
             return_message = "Click on GO to reload the session"
+        else:
+            return_message = "An error occurred"
         return jsonify({
             'status': 'error',
             'message': f'Failed to execute API: {return_message}'

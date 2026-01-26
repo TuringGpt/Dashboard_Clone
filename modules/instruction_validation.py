@@ -78,10 +78,10 @@ def instruction_validation():
                     'status': 'success',
                     'validation_result': validation_result
                 }), 200
-            except Exception as e:
+            except Exception:
                 return jsonify({
                     'status': 'error',
-                    'message': f'Failed to validate instruction: {str(e)}'
+                    'message': 'Failed to validate instruction'
                 }), 500
         else:
             return jsonify({
@@ -113,10 +113,10 @@ def instruction_relevant_actions_or_policies():
                 'status': 'success',
                 'validation_result': validation_result
             }), 200
-        except Exception as e:
+        except Exception:
             return jsonify({
                 'status': 'error',
-                'message': f'Failed to extract actions or policies: {str(e)}'
+                'message': 'Failed to extract actions or policies'
             }), 500
     else:
         return render_template('instruction_relevant_actions_or_policies.html')
