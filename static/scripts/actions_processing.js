@@ -2,13 +2,6 @@
 const APIs = new Map();
 let actionCounter = 0;
 
-// Helper function to escape HTML to prevent XSS
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
-}
-
 async function handleGo() {
     const environment = document.getElementById('environment').value.trim();
     const interface = document.getElementById('interface').value;
@@ -233,8 +226,8 @@ function selectAPI(actionId, apiKey) {
     if (!apiInfo) return;
     
     
-    // Show description (use textContent to prevent XSS)
-    descriptionDiv.textContent = apiInfo.description;
+    // Show description
+    descriptionDiv.innerHTML = apiInfo.description;
     descriptionDiv.style.display = 'block';
     
     // Create parameter inputs
@@ -577,18 +570,16 @@ async function executeAPI(actionId) {
             responseDiv.className = 'api-response show error';
             responseDiv.innerHTML = `
                 <div class="response-header">❌ Error</div>
-                <div class="response-content"></div>
+                <div class="response-content">${JSON.stringify(result, null, 2)}</div>
             `;
-            responseDiv.querySelector('.response-content').textContent = JSON.stringify(result, null, 2);
             showWrongMessage('API execution failed. Check the response for details.');
         }
     } catch (error) {
         responseDiv.className = 'api-response show error';
         responseDiv.innerHTML = `
             <div class="response-header">❌ Network Error</div>
-            <div class="response-content"></div>
+            <div class="response-content">Failed to connect to the server: ${error.message}</div>
         `;
-        responseDiv.querySelector('.response-content').textContent = 'Failed to connect to the server: ' + error.message;
         showWrongMessage('Network error occurred while executing the API.');
     } finally {
         executeButton.textContent = originalText;
@@ -664,7 +655,7 @@ function saveFilteredHTML() {
 
         switch (originalEl.tagName) {
             case 'TEXTAREA':
-                clonedEl.innerHTML = originalEl.value;
+                clonedEl.value = originalEl.value;
                 break;
             case 'SELECT':
                 Array.from(clonedEl.options).forEach(option => {
