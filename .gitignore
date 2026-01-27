@@ -212,3 +212,4 @@ flask_session/
 
 databases/
 schemas/
+# mysql/
