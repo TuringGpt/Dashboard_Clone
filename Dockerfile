@@ -1,5 +1,5 @@
 # Use Python 3.11 slim image
-FROM python:3.11-slim
+FROM us-docker.pkg.dev/turing-230020/turing-hardened-images/python:3.11-debain-h-202603
 
 # Set working directory
 WORKDIR /app
