@@ -453,6 +453,102 @@ function sendContentLLM(feature) {
                 console.error('Error:', error);
                 alert('An error occurred while generating the seed.');
             });
+    } else if (feature == "table_creation") {
+        const initialPrompt = document.getElementById('initial-prompt').value;
+        const platformContext = document.getElementById('platform-context').value;
+        const codeBasePath = document.getElementById('code-base-path').value;
+        const targetTables = document.getElementById('target-tables').value;
+        const timestampWindow = document.getElementById('timestamp-window').value;
+        const platformDocsReference = document.getElementById('platform-docs-reference').value;
+        const platformSpecificGuidance = document.getElementById('platform-specific-guidance').value;
+        const additionalTaskContext = document.getElementById('additional-task-context').value;
+
+        fetch('/clone/database_utilities_prompt_generation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'generate_table_creation_prompt',
+                initial_prompt: initialPrompt,
+                platform_context: platformContext,
+                code_base_path: codeBasePath,
+                target_tables: targetTables,
+                timestamp_window: timestampWindow,
+                platform_docs_reference: platformDocsReference,
+                platform_specific_guidance: platformSpecificGuidance,
+                additional_task_context: additionalTaskContext
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                const existingHeader = document.getElementById('output-header');
+                const existingTextArea = document.getElementById('generated-table-creation');
+                if (existingHeader) {
+                    existingHeader.remove();
+                }
+                if (existingTextArea) {
+                    existingTextArea.remove();
+                }
+
+                const outputHeader = document.createElement('h2');
+                outputHeader.innerText = 'Generated Table Creation Prompt';
+                outputHeader.id = 'output-header';
+                document.getElementById('content').appendChild(outputHeader);
+
+                const textAreaNode = document.createElement('textarea');
+                textAreaNode.id = 'generated-table-creation';
+                textAreaNode.style.width = '100%';
+                textAreaNode.style.height = '320px';
+                textAreaNode.value = data.prompt;
+                document.getElementById('content').appendChild(textAreaNode);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while generating the table creation prompt.');
+            });
+    } else if (feature == "qa") {
+        const initialPrompt = document.getElementById('initial-prompt').value;
+        const domain = document.getElementById('domain').value;
+
+        fetch('/clone/database_utilities_prompt_generation', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                action: 'generate_qa_prompt',
+                initial_prompt: initialPrompt,
+                domain: domain
+            })
+        })
+            .then(response => response.json())
+            .then(data => {
+                const existingHeader = document.getElementById('output-header');
+                const existingTextArea = document.getElementById('generated-qa');
+                if (existingHeader) {
+                    existingHeader.remove();
+                }
+                if (existingTextArea) {
+                    existingTextArea.remove();
+                }
+
+                const outputHeader = document.createElement('h2');
+                outputHeader.innerText = 'Generated QA Prompt';
+                outputHeader.id = 'output-header';
+                document.getElementById('content').appendChild(outputHeader);
+
+                const textAreaNode = document.createElement('textarea');
+                textAreaNode.id = 'generated-qa';
+                textAreaNode.style.width = '100%';
+                textAreaNode.style.height = '240px';
+                textAreaNode.value = data.prompt;
+                document.getElementById('content').appendChild(textAreaNode);
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('An error occurred while generating the QA prompt.');
+            });
     } else if (feature == "scenario_realism") {
         const initialPrompt = document.getElementById('initial-prompt').value;
         const dbSchema = document.getElementById('db-schema').value;
@@ -954,6 +1050,94 @@ async function database_seeding_handling() {
     // document.getElementById('example-data').value = data.example_data;
 }
 
+async function table_creation_handling() {
+    const response = await fetch('/clone/database_utilities', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            action: 'table_creation'
+        })
+    });
+
+    const data = await response.json();
+
+    document.getElementById('content').style.display = 'block';
+    document.getElementById('content').innerHTML = '';
+    document.getElementById('content').innerHTML = `
+            <h2 id="content-header">Table(s) Creation</h2>
+            <h3 class="content-subheader">Initial Prompt</h3>
+            <textarea id="initial-prompt" style="height: 220px;"></textarea>
+
+            <h3 class="content-subheader">Platform Context</h3>
+            <textarea id="platform-context"></textarea>
+
+            <h3 class="content-subheader">Code Base Path</h3>
+            <textarea id="code-base-path"></textarea>
+
+            <h3 class="content-subheader">Target Tables</h3>
+            <textarea id="target-tables"></textarea>
+
+            <h3 class="content-subheader">Timestamp Window</h3>
+            <textarea id="timestamp-window"></textarea>
+
+            <h3 class="content-subheader">Platform Docs Reference</h3>
+            <textarea id="platform-docs-reference"></textarea>
+
+            <h3 class="content-subheader">Platform Specific Guidance</h3>
+            <textarea id="platform-specific-guidance" style="height: 160px;"></textarea>
+
+            <h3 class="content-subheader">Additional Task Context</h3>
+            <textarea id="additional-task-context" style="height: 140px;"></textarea>
+
+            <div style="display: flex; justify-content: center; align-items: center; margin-top: 1rem;">
+                <button id="generate-table-creation" onclick="sendContentLLM('table_creation')" style="margin: 1rem; padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Generate Table Creation Prompt</button>
+            </div>
+        `;
+
+    document.getElementById('initial-prompt').value = data.initial_prompt || '';
+    document.getElementById('platform-context').value = '';
+    document.getElementById('code-base-path').value = '';
+    document.getElementById('target-tables').value = '';
+    document.getElementById('timestamp-window').value = '';
+    document.getElementById('platform-docs-reference').value = '';
+    document.getElementById('platform-specific-guidance').value = '';
+    document.getElementById('additional-task-context').value = '';
+}
+
+async function qa_handling() {
+    const response = await fetch('/clone/database_utilities', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            action: 'qa'
+        })
+    });
+
+    const data = await response.json();
+
+    document.getElementById('content').style.display = 'block';
+    document.getElementById('content').innerHTML = '';
+    document.getElementById('content').innerHTML = `
+            <h2 id="content-header">QA</h2>
+            <h3 class="content-subheader">Initial Prompt</h3>
+            <textarea id="initial-prompt" style="height: 220px;"></textarea>
+
+            <h3 class="content-subheader">Domain</h3>
+            <textarea id="domain"></textarea>
+
+            <div style="display: flex; justify-content: center; align-items: center; margin-top: 1rem;">
+                <button id="generate-qa" onclick="sendContentLLM('qa')" style="margin: 1rem; padding: 0.5rem 1rem; background: #667eea; color: white; border: none; border-radius: 8px; cursor: pointer;">Generate QA Prompt</button>
+            </div>
+        `;
+
+    document.getElementById('initial-prompt').value = data.initial_prompt || '';
+    document.getElementById('domain').value = '';
+}
+
 // async function scenario_realism_handling() {
 //     const response = await fetch('/clone/database_utilities', {
 //         method: 'POST',
@@ -1197,6 +1381,10 @@ document.addEventListener('DOMContentLoaded', function () {
                     api_implementation_handling();
                 } else if (utility === 'database-seeding') {
                     database_seeding_handling();
+                } else if (utility === 'table-creation') {
+                    table_creation_handling();
+                } else if (utility === 'qa') {
+                    qa_handling();
                 } else if (utility === 'scenario-realism') {
                     scenario_realism_handling();
                 }
