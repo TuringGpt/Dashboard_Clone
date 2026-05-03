@@ -1,0 +1,19 @@
+The generated data contains semantic and referential errors — cases where data is technically schema-valid but logically incorrect or unrealistic. Your job is to find them.
+
+Below are examples of the kinds of violations found in other domains. Use these as a reference for the pattern of thinking, then apply the same scrutiny to the **`{domain}`** domain:
+
+**Example violations from other domains:**
+
+- **Temporal violations:** A child row timestamped before its parent existed. *(e.g. a watcher created on `2026-02-10` while its parent ticket was created on `2026-02-15`; a forward created before the parent ticket existed)*
+- **Referential logic violations:** A FK value exists in the referenced table but points to the wrong role or type. *(e.g. a satisfaction rating stores `agent_id=73`, but user `73` maps to agent `61`, not the actual ticket responder)*
+- **Derived/rollup inconsistency:** A computed or cached count field does not match the actual number of related rows. *(e.g. `posts_count=3` on a topic that has `0` actual comment rows)*
+- **Business rule violations:** A row omits a logically required participant. *(e.g. a ticket access whitelist that does not include the ticket's own responder)*
+- **Timing realism violations:** An event occurs too soon after a trigger to be realistic. *(e.g. a satisfaction rating submitted only `0.68h` after ticket resolution)*
+
+Now apply this same pattern of thinking to the **`{domain}`** domain. Look for any data that is not logically correct or not realistically plausible.
+
+Report each violation type with:
+- the table and field involved
+- the nature of the logical or realism break
+- concrete row-level examples where possible
+- a count of affected rows if determinable

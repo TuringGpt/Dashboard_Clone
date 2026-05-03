@@ -1,0 +1,164 @@
+You are creating very realistic mock data for `{platform_context}`.
+
+You are working in this codebase:
+
+`{code_base_path}`
+
+Your task is to implement or update synthetic data generators for these table(s):
+
+`{target_tables}`
+
+Before coding, inspect the current repo state and use the existing architecture and style already present in:
+- `generators/`
+- `validators/`
+- `config/`
+- `main.py`
+- `pools/`
+
+Also use nearby reference generators only as a style guide, not as something to copy blindly.
+
+Requirements:
+
+1. Read the exact schema from the schema file in the repo.
+
+2. Read the current config and orchestration files in the repo — the config JSON, settings, and `main.py`.
+
+3. Keep the current repo structure consistent.
+   - Generic business validation belongs in `validators/data_validator.py`
+   - Semantic/table-specific validation belongs in `validators/`
+   - Do not reintroduce old paths like `utils/validators.py` or `table_specific_validators/`
+
+4. Do not use an LLM unless it is clearly necessary.
+   - Prefer scripted generation and large curated pools
+   - If using LLM at all, explain why it is required and keep it minimal
+   - Create rich, diverse pool files in `pools/` to drive realistic sampling across names, descriptions, addresses, and any other repeated value types
+
+5. Preserve referential integrity.
+   - Never guess parent IDs
+   - If parent tables already exist, read them from generated/preloaded data
+   - If the current schema has hard FKs, either generate the parent table too or clearly support preload mode
+
+6. Prefer diversity.
+   - Use weighted sampling
+   - Prefer underused entries when possible
+   - Avoid unnecessary duplication
+   - Use sampling without replacement where appropriate
+   - Build and reference pool files in `pools/` for any field that benefits from a large, curated value space
+
+7. Add or update semantic validators for the target tables in `validators/`
+
+8. Update only the necessary files, usually:
+   - `generators/*.py`
+   - `validators/*.py`
+   - config JSON and settings files
+   - `main.py` if table-to-generator mapping needs changes
+   - `pools/*.json` if a pool is needed or expanded
+   - docs only if the architecture changed
+
+9. Do not remove unrelated existing table support.
+
+---
+
+For each target table, follow this format in your implementation plan:
+- Dependencies:
+- Parent data source:
+- Generation strategy:
+- Pool usage:
+- Semantic validator rules:
+- Config/settings changes:
+- Verification steps:
+
+---
+
+Implementation expectations:
+- Match current code style and imports in this repo
+- Use the existing BaseGenerator helpers where appropriate
+- Enforce uniqueness and FK correctness
+- Make the generated data semantically plausible, not just schema-valid
+- Keep the output client-compatible
+
+Data realism principles:
+1. Generated data must look like real `{platform_context}` data, not demo or placeholder data.
+2. Maintain referential integrity across all related tables.
+3. Maintain realistic chronological ordering across timestamps.
+4. Use a rolling recent window of `{timestamp_window}` from now.
+5. Use realistic value distributions rather than flat random generation.
+
+LLM usage rules:
+1. Use LLM only for fields that cannot be generated realistically by script.
+2. Prefer script generation for IDs, enums, booleans, handles, URLs, slugs, timestamps, prices, counts, rollups, flags, and derived values.
+3. Use LLM for free-form text fields only, such as product descriptions and policy text.
+4. Every LLM prompt must include an explicit expected output JSON format.
+5. Every LLM response must be validated, normalized, and bounded by schema rules.
+6. If LLM output is weak or unavailable, fall back to a scripted generation path.
+
+---
+
+Architecture rules:
+1. Keep truly independent root tables in core generators.
+2. Group related dependent tables into dedicated domain generator files.
+3. Wire every new table through the full runtime path:
+   - generator implementation
+   - config metadata
+   - table-to-generator mapping
+   - generation order
+   - counts
+   - validation flow
+4. Reuse shared helper utilities instead of duplicating logic.
+5. Keep config as the editable source for controllable values and business rules.
+
+Validation rules:
+1. Validate all generated data against the active schema.
+2. Respect required fields, foreign keys, uniqueness, and enum compliance.
+3. Fail fast on schema-enum/config mismatches rather than silently drifting.
+4. Ensure uniqueness of values that must be unique at runtime, such as handles and constrained identifiers.
+5. After substantive edits, run lint and compile checks.
+
+{platform_specific_guidance}
+
+---
+
+Implementation style:
+1. Prefer deterministic scripted generation where realism is achievable without LLM.
+2. Use batched LLM generation for natural-language fields.
+3. Use parallelism for large LLM batch workflows when it improves runtime safely.
+4. Preserve clean separation between scripted structure generation and LLM text enrichment.
+5. Avoid placeholder values such as `John Doe`, `Sample Store`, `Test Product`, `lorem ipsum`, `foo@example.com`, `123 Main St`, `My Company`, `test`, `demo`, or fake tokens like `tok_test_abc123`.
+
+---
+
+When making decisions:
+1. First check the project schema.
+2. Then check `{platform_docs_reference}`.
+3. Then apply project-specific constraints already established in config and runtime.
+4. If there is conflict, prefer:
+   - schema for implemented field constraints
+   - official docs for semantics and allowed behavior when schema is silent
+   - project rules for dataset scope and architecture
+
+Your output should always aim for:
+- Schema correctness
+- `{platform_docs_reference}` alignment
+- Realistic data behavior
+- Minimal hardcoding
+- Maintainable generator architecture
+- Config-driven control
+
+---
+
+After implementing:
+1. Run the relevant verification command(s), usually:
+   - `python main.py`
+   - or `python main.py --use-sql-input --input-sql-path <path>` if parent context is required
+2. Report:
+   - what files changed
+   - whether validation passed
+   - any remaining risks or assumptions
+3. If the schema/config/runtime has contradictions, call them out explicitly before or after the implementation.
+
+---
+
+Context specific to this task:
+- There can be parent tables expected to already exist or be generated so do not generate them
+- Desired counts: Counts should be realistically relative to other tables that are related to it. If not, it can be an arbitrary number.
+- Additional context: `{additional_task_context}` *(can be empty)*

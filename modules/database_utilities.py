@@ -76,12 +76,40 @@ def database_utilities_prompt_generation():
         db_schema = data.get('db_schema', '')
         # example_data = data.get('example_data', '')
         initial_prompt = data.get('initial_prompt', '')
-        
+
         prompt = initial_prompt.format(
             db_schema=db_schema,
             # example_data_document=example_data
         )
         
+        return jsonify({
+            'status': 'success',
+            'prompt': prompt
+        }), 200
+    elif action == "generate_table_creation_prompt":
+        initial_prompt = data.get('initial_prompt', '')
+
+        prompt = initial_prompt.format(
+            platform_context=data.get('platform_context', ''),
+            code_base_path=data.get('code_base_path', ''),
+            target_tables=data.get('target_tables', ''),
+            timestamp_window=data.get('timestamp_window', ''),
+            platform_specific_guidance=data.get('platform_specific_guidance', ''),
+            platform_docs_reference=data.get('platform_docs_reference', ''),
+            additional_task_context=data.get('additional_task_context', '')
+        )
+
+        return jsonify({
+            'status': 'success',
+            'prompt': prompt
+        }), 200
+    elif action == "generate_qa_prompt":
+        initial_prompt = data.get('initial_prompt', '')
+
+        prompt = initial_prompt.format(
+            domain=data.get('domain', '')
+        )
+
         return jsonify({
             'status': 'success',
             'prompt': prompt
@@ -398,6 +426,36 @@ def database_utilities():
         # with open(example_data_file_path, 'r') as file:
         #     example_data = file.read()
         
+        return jsonify({
+            'status': 'success',
+            'initial_prompt': initial_prompt
+        }), 200
+    elif action == 'table_creation':
+        initial_prompt_file_path = f"prompts/{action}/initial_prompt.txt"
+        if not os.path.exists(initial_prompt_file_path):
+            return jsonify({
+                'status': 'error',
+                'message': f'Initial prompt file for {action} not found'
+            }), 404
+
+        with open(initial_prompt_file_path, 'r') as file:
+            initial_prompt = file.read()
+
+        return jsonify({
+            'status': 'success',
+            'initial_prompt': initial_prompt
+        }), 200
+    elif action == 'qa':
+        initial_prompt_file_path = f"prompts/{action}/initial_prompt.txt"
+        if not os.path.exists(initial_prompt_file_path):
+            return jsonify({
+                'status': 'error',
+                'message': f'Initial prompt file for {action} not found'
+            }), 404
+
+        with open(initial_prompt_file_path, 'r') as file:
+            initial_prompt = file.read()
+
         return jsonify({
             'status': 'success',
             'initial_prompt': initial_prompt
