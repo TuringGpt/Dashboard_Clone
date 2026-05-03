@@ -12,6 +12,7 @@ const DEFAULTS = {
   taskId: "TASK-001-short-slug",
   taskFile: "tasks/TASK-001-short-slug.yaml",
   geniePromptOut: "verification/prompts/TASK-001-genie.md",
+  anchorCommentsSql: "eval/anchor_comments/TASK-001-short-slug_comments.sql",
   envFile: ".env",
 };
 
@@ -37,6 +38,10 @@ const OPTIONS = {
   llmJudge: [
     { value: "", label: "Deterministic only" },
     { value: "--llm-sql-judge", label: "Add LLM SQL judge" },
+  ],
+  schemaComments: [
+    { value: "", label: "Include schema comments" },
+    { value: "--no-include-schema-comments", label: "Table/column comments only" },
   ],
   extraTables: [
     { value: "", label: "Fail extra tables" },
@@ -183,6 +188,23 @@ const SECTIONS = [
           `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} push-notebooks`,
           ...lines(v.notebookManifests).map((manifest) => `--manifest ${quote(manifest)}`),
           v.overwrite ? "--overwrite" : "",
+          v.dryRun ? "--dry-run" : "",
+        ]),
+      },
+      {
+        id: "apply-anchor-comments",
+        label: "Apply anchor comments",
+        description: "Run generated schema/table/column comment SQL against Databricks.",
+        fields: [
+          { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
+          { key: "sqlFile", label: "Anchor comments SQL file", defaultValue: DEFAULTS.anchorCommentsSql },
+          { key: "warehouseId", label: "SQL warehouse ID", defaultValue: DEFAULTS.warehouseId },
+          { key: "dryRun", label: "Dry run flag", defaultValue: "--dry-run", options: OPTIONS.dryRun },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} run-sql-file`,
+          `--sql-file ${quote(v.sqlFile || DEFAULTS.anchorCommentsSql)}`,
+          v.warehouseId ? `--warehouse-id ${v.warehouseId}` : "",
           v.dryRun ? "--dry-run" : "",
         ]),
       },
@@ -377,6 +399,22 @@ const SECTIONS = [
           v.llmSqlJudge ? "--llm-sql-judge" : "",
           v.llmSqlJudge && v.llmModel ? `--llm-model ${quote(v.llmModel)}` : "",
           v.llmSqlJudge && v.envFile ? `--env-file ${quote(v.envFile)}` : "",
+        ]),
+      },
+      {
+        id: "build-anchor-comments",
+        label: "Build anchor comment SQL",
+        description: "Create neutral Unity Catalog comments from table and column-comment anchors in a task YAML.",
+        fields: [
+          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
+          { key: "out", label: "Output SQL file", defaultValue: DEFAULTS.anchorCommentsSql },
+          { key: "schemaComments", label: "Schema comments", defaultValue: "", options: OPTIONS.schemaComments },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/build_anchor_comments_sql.py`,
+          `--task ${quote(v.taskFile)}`,
+          `--out ${quote(v.out || DEFAULTS.anchorCommentsSql)}`,
+          v.schemaComments ? "--no-include-schema-comments" : "",
         ]),
       },
       {
