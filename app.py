@@ -34,6 +34,7 @@ from modules.tool_schema_extractor import tool_schema_extractor_bp
 from modules.schema_manager import schema_manager_bp
 from modules.trajectory_viewer import trajectory_viewer_bp
 from modules.health import health_bp
+from modules.databricks import databricks_bp
 ################# END OF BLUEPRINTS #####################
 
 from dotenv import load_dotenv
@@ -71,6 +72,7 @@ app.register_blueprint(tool_schema_extractor_bp, url_prefix='/clone')
 app.register_blueprint(schema_manager_bp, url_prefix='/clone')
 app.register_blueprint(trajectory_viewer_bp, url_prefix='/clone')
 app.register_blueprint(health_bp, url_prefix='/clone')
+app.register_blueprint(databricks_bp, url_prefix='/clone')
 ####### END OF REGISTER BLUEPRINTS #######
 
 PUBLIC_ROUTES = {
@@ -90,7 +92,8 @@ PUBLIC_ROUTES = {
     '/clone/sop_validator',
     '/clone/sop_collection_validator',
     '/clone/tool_schema_extractor',
-    '/clone/trajectory_viewer'
+    '/clone/trajectory_viewer',
+    '/clone/databricks'
 }
 
 REDIRECT_ROUTES = {
@@ -103,7 +106,8 @@ REDIRECT_ROUTES = {
     '/clone/db_utilities',
     '/clone/sop_validator',
     '/clone/sop_collection_validator',
-    '/clone/tool_schema_extractor'
+    '/clone/tool_schema_extractor',
+    '/clone/databricks'
 }
 
 @app.before_request

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
+    <title>Databricks Command Builder - Turing Tooling</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/databricks.css') }}">
+    <script defer src="{{ url_for('static', filename='scripts/databricks.js') }}"></script>
+</head>
+
+<body>
+    <header class="dashboard-header">
+        <a href="/">
+            <div class="logo">
+                <img src="{{ url_for('static', filename='images/turing_logo.svg') }}" alt="Turing"
+                    style="width: 100px; scale: 1.5; display: block; margin: 0 auto;">
+            </div>
+        </a>
+    </header>
+
+    <main class="databricks-page">
+        <section class="hero-panel">
+            <div>
+                <p class="eyebrow">duck-rl-gym</p>
+                <h1>Databricks Command Builder</h1>
+                <p class="description">
+                    Build the documented commands for local generation, Databricks uploads, task authoring,
+                    Genie prompt creation, and validation. Commands assume you run them from the repository root.
+                </p>
+            </div>
+            <div class="root-note">
+                <span>Run from</span>
+                <strong>databricks/duck-rl-gym</strong>
+            </div>
+        </section>
+
+        <section class="builder-shell">
+            <nav class="tab-list" id="databricks-tabs" aria-label="Databricks command sections"></nav>
+
+            <div class="builder-grid">
+                <section class="builder-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="card-kicker">Inputs</p>
+                            <h2>Command Fields</h2>
+                        </div>
+                    </div>
+
+                    <label class="field-label" for="command-select">Command</label>
+                    <select id="command-select" class="command-control"></select>
+
+                    <p class="command-description" id="command-description"></p>
+                    <div id="command-fields" class="fields-grid"></div>
+                </section>
+
+                <section class="command-card">
+                    <div class="card-header">
+                        <div>
+                            <p class="card-kicker">Output</p>
+                            <h2>Generated Command</h2>
+                        </div>
+                        <button type="button" class="copy-button" id="copy-command">Copy</button>
+                    </div>
+                    <pre id="command-output" class="command-output"></pre>
+                    <div class="command-note">
+                        The builder does not execute commands. It only creates copyable shell commands.
+                    </div>
+                </section>
+            </div>
+        </section>
+    </main>
+</body>
+
+</html>
