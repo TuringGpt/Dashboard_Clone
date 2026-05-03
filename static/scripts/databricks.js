@@ -34,7 +34,65 @@ const OPTIONS = {
     { value: "", label: "No minimal hint" },
     { value: "--include-minimal-hint", label: "Include minimal hint" },
   ],
+  llmJudge: [
+    { value: "", label: "Deterministic only" },
+    { value: "--llm-sql-judge", label: "Add LLM SQL judge" },
+  ],
+  extraTables: [
+    { value: "", label: "Fail extra tables" },
+    { value: "--allow-extra-tables", label: "Allow extra tables" },
+  ],
 };
+
+const TAXONOMY_REFERENCE = [
+  {
+    title: "Distractor table/schema IDs",
+    items: [
+      ["1.a.i", "worse catalog"],
+      ["1.a.ii", "worse schema"],
+      ["1.a.iii", "worse name or hash/materialization suffix"],
+      ["1.a.iv", "no comment"],
+      ["1.a.v", "deprecated or worse comment"],
+      ["1.a.vi.a", "missing authoritative tag"],
+      ["1.a.vi.b", "non-authoritative/deprecated tag"],
+      ["1.a.vii", "wrong semantics"],
+      ["1.a.viii", "rollup or pre-aggregated grain"],
+    ],
+  },
+  {
+    title: "Distractor notebook/dashboard IDs",
+    items: [
+      ["1.b.i", "notebook points to deprecated table"],
+      ["1.b.ii", "notebook computes a similar but wrong metric"],
+      ["1.b.iii", "buggy non-authoritative notebook"],
+      ["1.c.i", "dashboard points to deprecated table"],
+      ["1.c.ii", "dashboard computes a similar but wrong metric"],
+      ["1.c.iii", "buggy non-authoritative dashboard"],
+      ["2", "non-asset distractor signal"],
+    ],
+  },
+  {
+    title: "Anchor IDs",
+    items: [
+      ["1.a.i", "authoritative table"],
+      ["1.a.ii", "non-authoritative comment but correct table"],
+      ["1.a.iii", "non-authoritative catalog but correct table"],
+      ["1.a.iv", "non-authoritative metadata but correct table"],
+      ["1.b.i", "authoritative notebook reference"],
+      ["1.b.ii", "non-authoritative notebook reference"],
+      ["1.c.i", "authoritative dashboard"],
+      ["1.c.ii", "non-authoritative dashboard"],
+      ["1.d.i", "authoritative drive document"],
+      ["1.d.ii", "non-authoritative drive document"],
+      ["2.a.i", "column usage instruction"],
+      ["2.a.ii", "column join-resolution hint"],
+      ["2.b", "authoritative table tag"],
+      ["2.c", "lineage signal"],
+      ["2.d", "usage signal"],
+      ["2.e", "freshness signal"],
+    ],
+  },
+];
 
 const SECTIONS = [
   {
@@ -183,7 +241,7 @@ const SECTIONS = [
         description: "Create notebook assets and update notebook manifests.",
         fields: [
           { key: "mode", label: "Mode", defaultValue: "both", options: OPTIONS.notebookMode },
-          { key: "ids", label: "Notebook taxonomy IDs", defaultValue: "1.b.i,1.b.iii" },
+          { key: "ids", label: "Notebook taxonomy IDs", defaultValue: "1.b.i,1.b.iii", taxonomyReference: true },
           { key: "codeMode", label: "Code mode", defaultValue: "both", options: OPTIONS.codeMode },
           { key: "composition", label: "Composition", defaultValue: "separate", options: OPTIONS.composition },
           { key: "outDir", label: "Notebook output directory", defaultValue: DEFAULTS.notebooksOutDir },
@@ -296,6 +354,32 @@ const SECTIONS = [
         ]),
       },
       {
+        id: "verify-genie-response",
+        label: "Verify Genie response",
+        description: "Check Genie SQL output, reported result rows, and semantic SQL/assets against a task YAML.",
+        fields: [
+          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
+          { key: "responseFile", label: "Saved Genie response", defaultValue: "verification/responses/TASK-001-genie.txt" },
+          { key: "dbPath", label: "SQLite DB path", defaultValue: DEFAULTS.sqliteOut },
+          { key: "out", label: "Harness report output", defaultValue: "verification/runs/TASK-001-harness.json" },
+          { key: "llmSqlJudge", label: "LLM SQL judge", defaultValue: "", options: OPTIONS.llmJudge },
+          { key: "llmModel", label: "LLM judge model", defaultValue: "gpt-4.1-mini" },
+          { key: "envFile", label: "Env file", defaultValue: DEFAULTS.envFile },
+          { key: "allowExtraTables", label: "Extra tables", defaultValue: "", options: OPTIONS.extraTables },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} -m harness.runner`,
+          `--task ${quote(v.taskFile)}`,
+          `--response ${quote(v.responseFile)}`,
+          `--db ${quote(v.dbPath)}`,
+          v.out ? `--out ${quote(v.out)}` : "",
+          v.allowExtraTables ? "--allow-extra-tables" : "",
+          v.llmSqlJudge ? "--llm-sql-judge" : "",
+          v.llmSqlJudge && v.llmModel ? `--llm-model ${quote(v.llmModel)}` : "",
+          v.llmSqlJudge && v.envFile ? `--env-file ${quote(v.envFile)}` : "",
+        ]),
+      },
+      {
         id: "sqlite-query",
         label: "Run local SQL",
         description: "Run SQL against SQLite while allowing canonical table names.",
@@ -329,7 +413,7 @@ const SECTIONS = [
         fields: [
           { key: "surface", label: "Surface", defaultValue: "data", options: OPTIONS.surface },
           { key: "mode", label: "Mode", defaultValue: "both", options: OPTIONS.notebookMode },
-          { key: "ids", label: "Taxonomy IDs", defaultValue: "1.a.i,2.a.ii" },
+          { key: "ids", label: "Taxonomy IDs", defaultValue: "1.a.i,2.a.ii", taxonomyReference: true },
           { key: "domain", label: "Domain focus", defaultValue: "" },
           { key: "out", label: "Prompt output path", defaultValue: "workspace/generators/prompts/custom_anchor_distractor_prompt.md" },
         ],
@@ -352,11 +436,16 @@ let values = {};
 
 document.addEventListener("DOMContentLoaded", () => {
   renderTabs();
+  renderTaxonomyReference();
   setSection(SECTIONS[0].id);
   document.getElementById("command-select").addEventListener("change", (event) => {
     setCommand(event.target.value);
   });
   document.getElementById("copy-command").addEventListener("click", copyCommand);
+  document.getElementById("taxonomy-close").addEventListener("click", closeTaxonomyModal);
+  document.getElementById("taxonomy-modal").addEventListener("click", (event) => {
+    if (event.target.id === "taxonomy-modal") closeTaxonomyModal();
+  });
 });
 
 function renderTabs() {
@@ -411,7 +500,9 @@ function renderFields() {
 
 function renderField(field) {
   const inputId = `field-${field.key}`;
-  const label = `<label class="field-label" for="${inputId}">${escapeHtml(field.label)}</label>`;
+  const label = field.taxonomyReference
+    ? `<div class="field-label-row"><label class="field-label" for="${inputId}">${escapeHtml(field.label)}</label><button type="button" class="taxonomy-button" data-taxonomy-open="true">View IDs</button></div>`
+    : `<label class="field-label" for="${inputId}">${escapeHtml(field.label)}</label>`;
   if (field.options) {
     const options = field.options.map((option) => {
       const value = typeof option === "string" ? option : option.value;
@@ -425,6 +516,39 @@ function renderField(field) {
     return `<div>${label}<textarea id="${inputId}" class="command-textarea">${escapeHtml(field.defaultValue || "")}</textarea></div>`;
   }
   return `<div>${label}<input id="${inputId}" class="command-control" value="${escapeHtml(field.defaultValue || "")}"></div>`;
+}
+
+function renderTaxonomyReference() {
+  const container = document.getElementById("taxonomy-reference");
+  container.innerHTML = TAXONOMY_REFERENCE.map((section) => `
+    <section class="taxonomy-section">
+      <h3>${escapeHtml(section.title)}</h3>
+      ${section.items.map(([id, description]) => `
+        <div class="taxonomy-row">
+          <span class="taxonomy-id">${escapeHtml(id)}</span>
+          <span class="taxonomy-description">${escapeHtml(description)}</span>
+        </div>
+      `).join("")}
+    </section>
+  `).join("");
+}
+
+document.addEventListener("click", (event) => {
+  if (event.target.matches("[data-taxonomy-open='true']")) {
+    openTaxonomyModal();
+  }
+});
+
+function openTaxonomyModal() {
+  const modal = document.getElementById("taxonomy-modal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeTaxonomyModal() {
+  const modal = document.getElementById("taxonomy-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
 }
 
 function updateOutput() {
