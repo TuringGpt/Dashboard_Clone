@@ -62,6 +62,34 @@ const OPTIONS = {
   ],
 };
 
+const GENERATE_DATA_OUTPUTS = {
+  all: {
+    sqliteOut: "verification/runs/full_seed.sqlite",
+    csvDir: "verification/exports/full_csv",
+    schemaJsonDir: "verification/schema/full_json",
+  },
+  selected: {
+    sqliteOut: "verification/runs/selected_assets_seed.sqlite",
+    csvDir: "verification/exports/selected_assets_csv",
+    schemaJsonDir: "verification/schema/selected_assets_json",
+  },
+  random: {
+    sqliteOut: "verification/runs/random_assets_seed.sqlite",
+    csvDir: "verification/exports/random_assets_csv",
+    schemaJsonDir: "verification/schema/random_assets_json",
+  },
+  manifest: {
+    sqliteOut: "verification/runs/gold_plus_assets_from_manifest.sqlite",
+    csvDir: "verification/exports/gold_plus_assets_from_manifest_csv",
+    schemaJsonDir: "verification/schema/gold_plus_assets_from_manifest_json",
+  },
+  assetsOnly: {
+    sqliteOut: "verification/runs/assets_only_seed.sqlite",
+    csvDir: "verification/exports/assets_only_csv",
+    schemaJsonDir: "verification/schema/assets_only_json",
+  },
+};
+
 const TAXONOMY_REFERENCE = [
   {
     title: "Distractor table/schema IDs",
@@ -238,6 +266,9 @@ const SECTIONS = [
             defaultValue: "all",
             options: OPTIONS.assetSelection,
             affectsVisibility: true,
+            affectsOutputDefaults: true,
+            helpText:
+              "All asset tables: generate every available table anchor/distractor. Selected taxonomy IDs: include only the IDs you enter. Random taxonomy sample: sample the requested counts using the seed.",
           },
           {
             key: "goldSource",
@@ -245,6 +276,9 @@ const SECTIONS = [
             defaultValue: "generate",
             options: OPTIONS.goldSource,
             affectsVisibility: true,
+            affectsOutputDefaults: true,
+            helpText:
+              "Generate gold now: rebuild gold tables in this run, then generate assets from them. Use existing gold CSV manifest: read the existing manifest and generate assets from that exact gold data.",
           },
           {
             key: "goldManifest",
@@ -258,6 +292,9 @@ const SECTIONS = [
             defaultValue: "",
             options: OPTIONS.assetsOnly,
             showWhen: (v) => v.goldSource === "manifest",
+            affectsOutputDefaults: true,
+            helpText:
+              "Gold + asset tables writes the existing gold tables plus generated assets. Asset tables only writes only the generated anchors/distractors.",
           },
           {
             key: "anchorTypes",
@@ -600,11 +637,17 @@ function renderFields() {
     const input = document.getElementById(`field-${field.key}`);
     input.addEventListener("input", (event) => {
       values[field.key] = event.target.value;
+      if (activeCommand.id === "generate-data" && field.affectsOutputDefaults) {
+        Object.assign(values, generateDataOutputDefaults(values));
+      }
       if (field.affectsVisibility) renderFields();
       updateOutput();
     });
     input.addEventListener("change", (event) => {
       values[field.key] = event.target.value;
+      if (activeCommand.id === "generate-data" && field.affectsOutputDefaults) {
+        Object.assign(values, generateDataOutputDefaults(values));
+      }
       if (field.affectsVisibility) renderFields();
       updateOutput();
     });
@@ -615,24 +658,38 @@ function visibleFields(command, currentValues) {
   return command.fields.filter((field) => !field.showWhen || field.showWhen(currentValues));
 }
 
+function generateDataOutputDefaults(currentValues) {
+  if (currentValues.goldSource === "manifest" && currentValues.assetsOnly) {
+    return GENERATE_DATA_OUTPUTS.assetsOnly;
+  }
+  if (currentValues.goldSource === "manifest") {
+    return GENERATE_DATA_OUTPUTS.manifest;
+  }
+  return GENERATE_DATA_OUTPUTS[currentValues.assetSelection || "all"] || GENERATE_DATA_OUTPUTS.all;
+}
+
 function renderField(field) {
   const inputId = `field-${field.key}`;
+  const currentValue = values[field.key] ?? field.defaultValue ?? "";
+  const helpButton = field.helpText
+    ? `<button type="button" class="help-button" data-help="${escapeHtml(field.helpText)}" aria-label="Explain ${escapeHtml(field.label)}">?</button>`
+    : "";
   const label = field.taxonomyReference
     ? `<div class="field-label-row"><label class="field-label" for="${inputId}">${escapeHtml(field.label)}</label><button type="button" class="taxonomy-button" data-taxonomy-open="true">View IDs</button></div>`
-    : `<label class="field-label" for="${inputId}">${escapeHtml(field.label)}</label>`;
+    : `<div class="field-label-row"><label class="field-label" for="${inputId}">${escapeHtml(field.label)}</label>${helpButton}</div>`;
   if (field.options) {
     const options = field.options.map((option) => {
       const value = typeof option === "string" ? option : option.value;
       const text = typeof option === "string" ? option : option.label;
-      const selected = value === (field.defaultValue || "") ? "selected" : "";
+      const selected = value === currentValue ? "selected" : "";
       return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(text)}</option>`;
     }).join("");
     return `<div>${label}<select id="${inputId}" class="command-control">${options}</select></div>`;
   }
   if (field.multiline) {
-    return `<div>${label}<textarea id="${inputId}" class="command-textarea">${escapeHtml(field.defaultValue || "")}</textarea></div>`;
+    return `<div>${label}<textarea id="${inputId}" class="command-textarea">${escapeHtml(currentValue)}</textarea></div>`;
   }
-  return `<div>${label}<input id="${inputId}" class="command-control" value="${escapeHtml(field.defaultValue || "")}"></div>`;
+  return `<div>${label}<input id="${inputId}" class="command-control" value="${escapeHtml(currentValue)}"></div>`;
 }
 
 function renderTaxonomyReference() {
@@ -653,6 +710,9 @@ function renderTaxonomyReference() {
 document.addEventListener("click", (event) => {
   if (event.target.matches("[data-taxonomy-open='true']")) {
     openTaxonomyModal();
+  }
+  if (event.target.matches("[data-help]")) {
+    window.alert(event.target.dataset.help);
   }
 });
 

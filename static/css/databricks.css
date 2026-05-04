@@ -171,6 +171,7 @@ h2 {
 }
 
 .taxonomy-button,
+.help-button,
 .taxonomy-close {
     border: 1px solid rgba(96, 165, 250, 0.6);
     background: rgba(37, 99, 235, 0.18);
@@ -183,8 +184,15 @@ h2 {
 }
 
 .taxonomy-button:hover,
+.help-button:hover,
 .taxonomy-close:hover {
     background: rgba(37, 99, 235, 0.35);
+}
+
+.help-button {
+    width: 32px;
+    padding: 0;
+    border-radius: 999px;
 }
 
 .command-control,
