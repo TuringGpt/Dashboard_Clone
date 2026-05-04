@@ -232,23 +232,59 @@ const SECTIONS = [
         label: "Generate gold + asset data",
         description: "Build gold tables plus generated table anchors and table distractors; choose all, selected IDs, or random sampling.",
         fields: [
-          { key: "assetSelection", label: "Asset selection", defaultValue: "all", options: OPTIONS.assetSelection },
-          { key: "goldSource", label: "Gold source", defaultValue: "generate", options: OPTIONS.goldSource },
+          {
+            key: "assetSelection",
+            label: "Asset selection",
+            defaultValue: "all",
+            options: OPTIONS.assetSelection,
+            affectsVisibility: true,
+          },
+          {
+            key: "goldSource",
+            label: "Gold source",
+            defaultValue: "generate",
+            options: OPTIONS.goldSource,
+            affectsVisibility: true,
+          },
           {
             key: "goldManifest",
             label: "Existing gold CSV manifest",
             defaultValue: "verification/exports/gold_csv/generation_manifest.csv",
+            showWhen: (v) => v.goldSource === "manifest",
           },
-          { key: "assetsOnly", label: "Output contents with existing gold", defaultValue: "", options: OPTIONS.assetsOnly },
-          { key: "anchorTypes", label: "Anchor taxonomy IDs", defaultValue: "1.a.i,2.a.ii", taxonomyReference: true },
+          {
+            key: "assetsOnly",
+            label: "Output contents with existing gold",
+            defaultValue: "",
+            options: OPTIONS.assetsOnly,
+            showWhen: (v) => v.goldSource === "manifest",
+          },
+          {
+            key: "anchorTypes",
+            label: "Anchor taxonomy IDs",
+            defaultValue: "1.a.i,2.a.ii",
+            taxonomyReference: true,
+            showWhen: (v) => v.assetSelection === "selected",
+          },
           {
             key: "distractorTypes",
             label: "Distractor taxonomy IDs",
             defaultValue: "1.a.i,1.a.viii",
             taxonomyReference: true,
+            showWhen: (v) => v.assetSelection === "selected",
           },
-          { key: "randomAnchors", label: "Random anchor count", defaultValue: "2" },
-          { key: "randomDistractors", label: "Random distractor count", defaultValue: "3" },
+          {
+            key: "randomAnchors",
+            label: "Random anchor count",
+            defaultValue: "2",
+            showWhen: (v) => v.assetSelection === "random",
+          },
+          {
+            key: "randomDistractors",
+            label: "Random distractor count",
+            defaultValue: "3",
+            showWhen: (v) => v.assetSelection === "random",
+          },
           { key: "sqliteOut", label: "SQLite output", defaultValue: DEFAULTS.sqliteOut },
           { key: "csvDir", label: "CSV output directory", defaultValue: DEFAULTS.csvDir },
           { key: "schemaJsonDir", label: "JSON schema directory", defaultValue: DEFAULTS.schemaJsonDir },
@@ -558,18 +594,25 @@ function setCommand(commandId) {
 
 function renderFields() {
   const container = document.getElementById("command-fields");
-  container.innerHTML = activeCommand.fields.map((field) => renderField(field)).join("");
-  activeCommand.fields.forEach((field) => {
+  const fields = visibleFields(activeCommand, values);
+  container.innerHTML = fields.map((field) => renderField(field)).join("");
+  fields.forEach((field) => {
     const input = document.getElementById(`field-${field.key}`);
     input.addEventListener("input", (event) => {
       values[field.key] = event.target.value;
+      if (field.affectsVisibility) renderFields();
       updateOutput();
     });
     input.addEventListener("change", (event) => {
       values[field.key] = event.target.value;
+      if (field.affectsVisibility) renderFields();
       updateOutput();
     });
   });
+}
+
+function visibleFields(command, currentValues) {
+  return command.fields.filter((field) => !field.showWhen || field.showWhen(currentValues));
 }
 
 function renderField(field) {
