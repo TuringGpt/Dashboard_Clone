@@ -216,8 +216,8 @@ const SECTIONS = [
     commands: [
       {
         id: "generate-data",
-        label: "Generate full local data",
-        description: "Build SQLite, CSV, and JSON schema artifacts.",
+        label: "Generate gold + asset data",
+        description: "Build gold tables plus generated table anchors and table distractors.",
         fields: [
           { key: "sqliteOut", label: "SQLite output", defaultValue: DEFAULTS.sqliteOut },
           { key: "csvDir", label: "CSV output directory", defaultValue: DEFAULTS.csvDir },
@@ -236,20 +236,20 @@ const SECTIONS = [
         ]),
       },
       {
-        id: "generate-core-data",
-        label: "Generate core-only data",
-        description: "Build only the core workspace tables without generated support tables.",
+        id: "generate-gold-data",
+        label: "Generate gold-only data",
+        description: "Build only the gold workspace tables without generated anchor/distractor asset tables.",
         fields: [
-          { key: "sqliteOut", label: "SQLite output", defaultValue: "verification/runs/full_core_seed.sqlite" },
-          { key: "csvDir", label: "CSV output directory", defaultValue: "verification/exports/full_core_csv" },
-          { key: "schemaJsonDir", label: "JSON schema directory", defaultValue: "verification/schema/full_core_json" },
+          { key: "sqliteOut", label: "SQLite output", defaultValue: "verification/runs/gold_seed.sqlite" },
+          { key: "csvDir", label: "CSV output directory", defaultValue: "verification/exports/gold_csv" },
+          { key: "schemaJsonDir", label: "JSON schema directory", defaultValue: "verification/schema/gold_json" },
           { key: "seed", label: "Seed", defaultValue: "42" },
           { key: "scale", label: "Scale", defaultValue: "1.0" },
         ],
         build: (v) => joinCommand([
           `${PYTHON} -m workspace.generators.run`,
           "--target sqlite",
-          "--no-support",
+          "--gold-only",
           `--out ${quote(v.sqliteOut)}`,
           `--csv-dir ${quote(v.csvDir)}`,
           `--schema-json-dir ${quote(v.schemaJsonDir)}`,
