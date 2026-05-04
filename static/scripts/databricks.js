@@ -169,6 +169,7 @@ const SECTIONS = [
   {
     id: "deploy",
     label: "Deploy",
+    description: "Push generated CSV data, notebooks, and workspace metadata into Databricks.",
     commands: [
       {
         id: "whoami",
@@ -279,6 +280,7 @@ const SECTIONS = [
   {
     id: "generate",
     label: "Generate",
+    description: "Create local gold data, generated anchor/distractor asset data, and notebook source files.",
     commands: [
       {
         id: "generate-data",
@@ -390,8 +392,8 @@ const SECTIONS = [
       },
       {
         id: "generate-notebooks",
-        label: "Generate notebooks",
-        description: "Create notebook assets and update notebook manifests.",
+        label: "Generate notebooks from static specs",
+        description: "Create notebook assets from built-in specs and update notebook manifests. This does not call the LLM.",
         fields: [
           { key: "mode", label: "Mode", defaultValue: "both", options: OPTIONS.notebookMode },
           { key: "ids", label: "Notebook taxonomy IDs", defaultValue: "1.b.i,1.b.iii", taxonomyReference: true },
@@ -412,7 +414,7 @@ const SECTIONS = [
       },
       {
         id: "generate-llm-notebooks",
-        label: "Generate LLM notebook specs",
+        label: "Generate notebooks with LLM specs",
         description: "Ask the LLM for notebook specs, then write notebook files and manifests.",
         fields: [
           { key: "anchorCount", label: "Anchor notebook count", defaultValue: "2" },
@@ -442,7 +444,8 @@ const SECTIONS = [
   },
   {
     id: "genie",
-    label: "Genie",
+    label: "Task Authoring",
+    description: "Create task templates and build the Genie prompt that should be sent to Databricks Genie.",
     commands: [
       {
         id: "create-task",
@@ -479,11 +482,28 @@ const SECTIONS = [
           v.out ? `--out ${quote(v.out)}` : "",
         ]),
       },
+      {
+        id: "build-workspace-metadata",
+        label: "Build workspace metadata SQL",
+        description: "Create neutral Unity Catalog comments from task-declared informative and distracting table/column metadata.",
+        fields: [
+          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
+          { key: "out", label: "Output SQL file", defaultValue: DEFAULTS.workspaceMetadataSql },
+          { key: "schemaComments", label: "Schema comments", defaultValue: "", options: OPTIONS.schemaComments },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/build_workspace_metadata_sql.py`,
+          `--task ${quote(v.taskFile)}`,
+          `--out ${quote(v.out || DEFAULTS.workspaceMetadataSql)}`,
+          v.schemaComments ? "--no-include-schema-comments" : "",
+        ]),
+      },
     ],
   },
   {
     id: "tasks",
-    label: "Tasks",
+    label: "Task Verification",
+    description: "Validate task YAML, build coverage, and check saved Genie responses against canonical answers.",
     commands: [
       {
         id: "validate-tasks",
@@ -532,48 +552,12 @@ const SECTIONS = [
           v.llmSqlJudge && v.envFile ? `--env-file ${quote(v.envFile)}` : "",
         ]),
       },
-      {
-        id: "build-workspace-metadata",
-        label: "Build workspace metadata SQL",
-        description: "Create neutral Unity Catalog comments from task-declared informative and distracting table/column metadata.",
-        fields: [
-          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
-          { key: "out", label: "Output SQL file", defaultValue: DEFAULTS.workspaceMetadataSql },
-          { key: "schemaComments", label: "Schema comments", defaultValue: "", options: OPTIONS.schemaComments },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} tools/build_workspace_metadata_sql.py`,
-          `--task ${quote(v.taskFile)}`,
-          `--out ${quote(v.out || DEFAULTS.workspaceMetadataSql)}`,
-          v.schemaComments ? "--no-include-schema-comments" : "",
-        ]),
-      },
-      {
-        id: "sqlite-query",
-        label: "Run local SQL",
-        description: "Run SQL against SQLite while allowing canonical table names.",
-        fields: [
-          { key: "dbPath", label: "SQLite DB path", defaultValue: DEFAULTS.sqliteOut },
-          {
-            key: "sql",
-            label: "SQL",
-            defaultValue:
-              "select branch_id, sum(fee_amount_usd) as total_fee from main.finance_core.fee_revenue group by 1 order by 2 desc limit 5",
-            multiline: true,
-          },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} tools/sqlite_query.py`,
-          `--db ${quote(v.dbPath)}`,
-          `--sql ${quote(v.sql)}`,
-          "--show-sql",
-        ]),
-      },
     ],
   },
   {
     id: "prompts",
-    label: "Prompts",
+    label: "Tools",
+    description: "General repo utilities: prompt builders, local SQLite inspection, and table-name mapping helpers.",
     commands: [
       {
         id: "anchor-distractor-prompt",
@@ -594,6 +578,34 @@ const SECTIONS = [
           v.domain ? `--domain ${quote(v.domain)}` : "",
           `--out ${quote(v.out)}`,
         ]),
+      },
+      {
+        id: "sqlite-query",
+        label: "Run local SQL",
+        description: "Run SQL against SQLite while allowing canonical Databricks table names.",
+        fields: [
+          { key: "dbPath", label: "SQLite DB path", defaultValue: DEFAULTS.sqliteOut },
+          {
+            key: "sql",
+            label: "SQL",
+            defaultValue:
+              "select branch_id, sum(fee_amount_usd) as total_fee from main.finance_core.fee_revenue group by 1 order by 2 desc limit 5",
+            multiline: true,
+          },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/sqlite_query.py`,
+          `--db ${quote(v.dbPath)}`,
+          `--sql ${quote(v.sql)}`,
+          "--show-sql",
+        ]),
+      },
+      {
+        id: "sqlite-mapping",
+        label: "List SQLite mapping",
+        description: "Show how Databricks 3-part table names map to local SQLite table names.",
+        fields: [{ key: "dbPath", label: "SQLite DB path", defaultValue: DEFAULTS.sqliteOut }],
+        build: (v) => `${PYTHON} tools/sqlite_query.py --db ${quote(v.dbPath)} --list-mapping`,
       },
     ],
   },
@@ -636,6 +648,7 @@ function setSection(sectionId) {
   document.querySelectorAll(".tab-button").forEach((button) => {
     button.classList.toggle("active", button.dataset.section === activeSection.id);
   });
+  document.getElementById("section-description").textContent = activeSection.description || "";
   const select = document.getElementById("command-select");
   select.innerHTML = activeSection.commands.map(
     (command) => `<option value="${escapeHtml(command.id)}">${escapeHtml(command.label)}</option>`
