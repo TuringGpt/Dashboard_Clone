@@ -90,6 +90,31 @@ const GENERATE_DATA_OUTPUTS = {
   },
 };
 
+const HELP_CONTENT = {
+  assetSelection: {
+    title: "Asset selection",
+    items: [
+      ["All asset tables", "Generate every available table anchor/distractor type."],
+      ["Selected taxonomy IDs", "Show ID fields and include only the anchor/distractor IDs you enter."],
+      ["Random taxonomy sample", "Show count fields and sample that many anchor/distractor types using the seed."],
+    ],
+  },
+  goldSource: {
+    title: "Gold source",
+    items: [
+      ["Generate gold now", "Rebuild gold tables in this run, then generate assets from those tables."],
+      ["Use existing gold CSV manifest", "Read an existing generation_manifest.csv and generate assets from that exact gold CSV state."],
+    ],
+  },
+  assetsOnly: {
+    title: "Output contents with existing gold",
+    items: [
+      ["Gold + asset tables", "Write the existing gold tables plus generated asset tables to the output."],
+      ["Asset tables only", "Write only the generated anchor/distractor asset tables."],
+    ],
+  },
+};
+
 const TAXONOMY_REFERENCE = [
   {
     title: "Distractor table/schema IDs",
@@ -267,8 +292,7 @@ const SECTIONS = [
             options: OPTIONS.assetSelection,
             affectsVisibility: true,
             affectsOutputDefaults: true,
-            helpText:
-              "All asset tables: generate every available table anchor/distractor. Selected taxonomy IDs: include only the IDs you enter. Random taxonomy sample: sample the requested counts using the seed.",
+            helpKey: "assetSelection",
           },
           {
             key: "goldSource",
@@ -277,8 +301,7 @@ const SECTIONS = [
             options: OPTIONS.goldSource,
             affectsVisibility: true,
             affectsOutputDefaults: true,
-            helpText:
-              "Generate gold now: rebuild gold tables in this run, then generate assets from them. Use existing gold CSV manifest: read the existing manifest and generate assets from that exact gold data.",
+            helpKey: "goldSource",
           },
           {
             key: "goldManifest",
@@ -293,8 +316,7 @@ const SECTIONS = [
             options: OPTIONS.assetsOnly,
             showWhen: (v) => v.goldSource === "manifest",
             affectsOutputDefaults: true,
-            helpText:
-              "Gold + asset tables writes the existing gold tables plus generated assets. Asset tables only writes only the generated anchors/distractors.",
+            helpKey: "assetsOnly",
           },
           {
             key: "anchorTypes",
@@ -590,8 +612,12 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("copy-command").addEventListener("click", copyCommand);
   document.getElementById("taxonomy-close").addEventListener("click", closeTaxonomyModal);
+  document.getElementById("help-close").addEventListener("click", closeHelpModal);
   document.getElementById("taxonomy-modal").addEventListener("click", (event) => {
     if (event.target.id === "taxonomy-modal") closeTaxonomyModal();
+  });
+  document.getElementById("help-modal").addEventListener("click", (event) => {
+    if (event.target.id === "help-modal") closeHelpModal();
   });
 });
 
@@ -671,8 +697,8 @@ function generateDataOutputDefaults(currentValues) {
 function renderField(field) {
   const inputId = `field-${field.key}`;
   const currentValue = values[field.key] ?? field.defaultValue ?? "";
-  const helpButton = field.helpText
-    ? `<button type="button" class="help-button" data-help="${escapeHtml(field.helpText)}" aria-label="Explain ${escapeHtml(field.label)}">?</button>`
+  const helpButton = field.helpKey
+    ? `<button type="button" class="help-button" data-help-key="${escapeHtml(field.helpKey)}" aria-label="Explain ${escapeHtml(field.label)}">?</button>`
     : "";
   const label = field.taxonomyReference
     ? `<div class="field-label-row"><label class="field-label" for="${inputId}">${escapeHtml(field.label)}</label><button type="button" class="taxonomy-button" data-taxonomy-open="true">View IDs</button></div>`
@@ -711,8 +737,8 @@ document.addEventListener("click", (event) => {
   if (event.target.matches("[data-taxonomy-open='true']")) {
     openTaxonomyModal();
   }
-  if (event.target.matches("[data-help]")) {
-    window.alert(event.target.dataset.help);
+  if (event.target.matches("[data-help-key]")) {
+    openHelpModal(event.target.dataset.helpKey);
   }
 });
 
@@ -724,6 +750,29 @@ function openTaxonomyModal() {
 
 function closeTaxonomyModal() {
   const modal = document.getElementById("taxonomy-modal");
+  modal.classList.remove("open");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+function openHelpModal(helpKey) {
+  const content = HELP_CONTENT[helpKey];
+  if (!content) return;
+
+  document.getElementById("help-title").textContent = content.title;
+  document.getElementById("help-content").innerHTML = content.items.map(([title, body]) => `
+    <section class="help-section">
+      <h3>${escapeHtml(title)}</h3>
+      <p>${escapeHtml(body)}</p>
+    </section>
+  `).join("");
+
+  const modal = document.getElementById("help-modal");
+  modal.classList.add("open");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function closeHelpModal() {
+  const modal = document.getElementById("help-modal");
   modal.classList.remove("open");
   modal.setAttribute("aria-hidden", "true");
 }
