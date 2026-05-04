@@ -12,7 +12,7 @@ const DEFAULTS = {
   taskId: "TASK-001-short-slug",
   taskFile: "tasks/TASK-001-short-slug.yaml",
   geniePromptOut: "verification/prompts/TASK-001-genie.md",
-  anchorCommentsSql: "eval/anchor_comments/TASK-001-short-slug_comments.sql",
+  workspaceMetadataSql: "eval/workspace_metadata/TASK-001-short-slug_metadata.sql",
   envFile: ".env",
 };
 
@@ -192,18 +192,18 @@ const SECTIONS = [
         ]),
       },
       {
-        id: "apply-anchor-comments",
-        label: "Apply anchor comments",
-        description: "Run generated schema/table/column comment SQL against Databricks.",
+        id: "apply-workspace-metadata",
+        label: "Apply workspace metadata",
+        description: "Run generated schema/table/column metadata SQL against Databricks.",
         fields: [
           { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
-          { key: "sqlFile", label: "Anchor comments SQL file", defaultValue: DEFAULTS.anchorCommentsSql },
+          { key: "sqlFile", label: "Workspace metadata SQL file", defaultValue: DEFAULTS.workspaceMetadataSql },
           { key: "warehouseId", label: "SQL warehouse ID", defaultValue: DEFAULTS.warehouseId },
           { key: "dryRun", label: "Dry run flag", defaultValue: "--dry-run", options: OPTIONS.dryRun },
         ],
         build: (v) => joinCommand([
           `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} run-sql-file`,
-          `--sql-file ${quote(v.sqlFile || DEFAULTS.anchorCommentsSql)}`,
+          `--sql-file ${quote(v.sqlFile || DEFAULTS.workspaceMetadataSql)}`,
           v.warehouseId ? `--warehouse-id ${v.warehouseId}` : "",
           v.dryRun ? "--dry-run" : "",
         ]),
@@ -402,18 +402,18 @@ const SECTIONS = [
         ]),
       },
       {
-        id: "build-anchor-comments",
-        label: "Build anchor comment SQL",
-        description: "Create neutral Unity Catalog comments from table and column-comment anchors in a task YAML.",
+        id: "build-workspace-metadata",
+        label: "Build workspace metadata SQL",
+        description: "Create neutral Unity Catalog comments from task-declared informative and distracting table/column metadata.",
         fields: [
           { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
-          { key: "out", label: "Output SQL file", defaultValue: DEFAULTS.anchorCommentsSql },
+          { key: "out", label: "Output SQL file", defaultValue: DEFAULTS.workspaceMetadataSql },
           { key: "schemaComments", label: "Schema comments", defaultValue: "", options: OPTIONS.schemaComments },
         ],
         build: (v) => joinCommand([
-          `${PYTHON} tools/build_anchor_comments_sql.py`,
+          `${PYTHON} tools/build_workspace_metadata_sql.py`,
           `--task ${quote(v.taskFile)}`,
-          `--out ${quote(v.out || DEFAULTS.anchorCommentsSql)}`,
+          `--out ${quote(v.out || DEFAULTS.workspaceMetadataSql)}`,
           v.schemaComments ? "--no-include-schema-comments" : "",
         ]),
       },
