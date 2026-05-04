@@ -12,7 +12,10 @@ const DEFAULTS = {
   taskId: "TASK-001-short-slug",
   taskFile: "tasks/TASK-001-short-slug.yaml",
   geniePromptOut: "verification/prompts/TASK-001-genie.md",
+  genieResponseOut: "verification/responses/TASK-001-genie.json",
   workspaceMetadataSql: "eval/workspace_metadata/TASK-001-short-slug_metadata.sql",
+  genieSpaceConfig: "workspace/genie/space_config.json",
+  genieSpaceId: "<genie-space-id>",
   envFile: ".env",
 };
 
@@ -275,6 +278,34 @@ const SECTIONS = [
           v.dryRun ? "--dry-run" : "",
         ]),
       },
+      {
+        id: "list-genie-spaces",
+        label: "List Genie Spaces",
+        description: "List Genie Spaces visible to the current Databricks profile.",
+        fields: [{ key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile }],
+        build: (v) => `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} list-genie-spaces`,
+      },
+      {
+        id: "create-genie-space",
+        label: "Create Genie Space",
+        description: "Create a Databricks Genie Space from a generated serialized-space config JSON.",
+        fields: [
+          { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
+          { key: "config", label: "Genie Space config JSON", defaultValue: DEFAULTS.genieSpaceConfig },
+          { key: "warehouseId", label: "SQL warehouse ID", defaultValue: DEFAULTS.warehouseId },
+          { key: "title", label: "Title override", defaultValue: "" },
+          { key: "parentPath", label: "Parent workspace path", defaultValue: "/Workspace/Shared" },
+          { key: "dryRun", label: "Dry run flag", defaultValue: "--dry-run", options: OPTIONS.dryRun },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} create-genie-space`,
+          `--config ${quote(v.config || DEFAULTS.genieSpaceConfig)}`,
+          v.warehouseId ? `--warehouse-id ${v.warehouseId}` : "",
+          v.title ? `--title ${quote(v.title)}` : "",
+          v.parentPath ? `--parent-path ${quote(v.parentPath)}` : "",
+          v.dryRun ? "--dry-run" : "",
+        ]),
+      },
     ],
   },
   {
@@ -498,6 +529,26 @@ const SECTIONS = [
           v.schemaComments ? "--no-include-schema-comments" : "",
         ]),
       },
+      {
+        id: "build-genie-space-config",
+        label: "Build Genie Space config",
+        description: "Create a serialized Genie Space config from local schema metadata and task questions/gold SQL.",
+        fields: [
+          { key: "schemaDir", label: "JSON schema directory", defaultValue: DEFAULTS.schemaJsonDir },
+          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
+          { key: "out", label: "Output config JSON", defaultValue: DEFAULTS.genieSpaceConfig },
+          { key: "title", label: "Space title", defaultValue: "duck-rl-gym Genie Space" },
+          { key: "warehouseId", label: "SQL warehouse ID placeholder", defaultValue: DEFAULTS.warehouseId },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/build_genie_space_config.py`,
+          `--schema-dir ${quote(v.schemaDir || DEFAULTS.schemaJsonDir)}`,
+          `--task ${quote(v.taskFile || DEFAULTS.taskFile)}`,
+          `--out ${quote(v.out || DEFAULTS.genieSpaceConfig)}`,
+          v.title ? `--title ${quote(v.title)}` : "",
+          v.warehouseId ? `--warehouse-id ${quote(v.warehouseId)}` : "",
+        ]),
+      },
     ],
   },
   {
@@ -532,7 +583,7 @@ const SECTIONS = [
         description: "Check Genie SQL output, reported result rows, and semantic SQL/assets against a task YAML.",
         fields: [
           { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
-          { key: "responseFile", label: "Saved Genie response", defaultValue: "verification/responses/TASK-001-genie.txt" },
+          { key: "responseFile", label: "Saved Genie response", defaultValue: DEFAULTS.genieResponseOut },
           { key: "dbPath", label: "SQLite DB path", defaultValue: DEFAULTS.sqliteOut },
           { key: "out", label: "Harness report output", defaultValue: "verification/runs/TASK-001-harness.json" },
           { key: "llmSqlJudge", label: "LLM SQL judge", defaultValue: "", options: OPTIONS.llmJudge },
@@ -551,6 +602,27 @@ const SECTIONS = [
           v.llmSqlJudge && v.llmModel ? `--llm-model ${quote(v.llmModel)}` : "",
           v.llmSqlJudge && v.envFile ? `--env-file ${quote(v.envFile)}` : "",
         ]),
+      },
+      {
+        id: "ask-genie",
+        label: "Ask Genie with prompt",
+        description: "Start a Genie conversation using a generated prompt file so the response can be saved and verified.",
+        fields: [
+          { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
+          { key: "spaceId", label: "Genie Space ID", defaultValue: DEFAULTS.genieSpaceId },
+          { key: "promptFile", label: "Prompt file", defaultValue: DEFAULTS.geniePromptOut },
+          { key: "out", label: "Save response JSON", defaultValue: DEFAULTS.genieResponseOut },
+          { key: "dryRun", label: "Dry run flag", defaultValue: "--dry-run", options: OPTIONS.dryRun },
+        ],
+        build: (v) => appendRedirect(
+          joinCommand([
+            `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} ask-genie`,
+            `--space-id ${quote(v.spaceId || DEFAULTS.genieSpaceId)}`,
+            `--prompt-file ${quote(v.promptFile || DEFAULTS.geniePromptOut)}`,
+            v.dryRun ? "--dry-run" : "",
+          ]),
+          v.dryRun ? "" : v.out
+        ),
       },
     ],
   },
@@ -813,6 +885,10 @@ function quote(value) {
 
 function joinCommand(parts) {
   return parts.filter(Boolean).map((part, index) => (index === 0 ? part : `  ${part}`)).join(" \\\n");
+}
+
+function appendRedirect(command, outputPath) {
+  return outputPath ? `${command} \\\n  > ${quote(outputPath)}` : command;
 }
 
 function lines(value) {
