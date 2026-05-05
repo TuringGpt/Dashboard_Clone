@@ -1,20 +1,27 @@
 const PYTHON = "python";
 
 const DEFAULTS = {
+  environment: "meridian_mid_sized_bank",
   profile: "DEFAULT",
   warehouseId: "585750a8283c627a",
-  sqliteOut: "verification/runs/full_seed.sqlite",
-  csvDir: "verification/exports/full_csv",
-  schemaJsonDir: "verification/schema/full_json",
-  manifest: "verification/exports/full_csv/generation_manifest.csv",
-  workspacePrefix: "/Workspace/Shared/generated",
-  notebooksOutDir: "workspace/notebooks/generated",
-  taskId: "TASK-001-short-slug",
-  taskFile: "tasks/TASK-001-short-slug.yaml",
-  geniePromptOut: "verification/prompts/TASK-001-genie.md",
-  genieResponseOut: "verification/responses/TASK-001-genie.json",
-  workspaceMetadataSql: "eval/workspace_metadata/TASK-001-short-slug_metadata.sql",
-  genieSpaceConfig: "workspace/genie/space_config.json",
+  sqliteOut: "workspace/meridian_mid_sized_bank/generated_data/runs/full_seed.sqlite",
+  csvDir: "workspace/meridian_mid_sized_bank/generated_data/exports/full_csv",
+  schemaJsonDir: "workspace/meridian_mid_sized_bank/generated_data/schema/full_json",
+  manifest: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch/gold/data/generation_manifest.csv",
+  anchorDataManifest: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch/anchors/assets/data/generation_manifest.csv",
+  distractorDataManifest: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch/distractors/assets/data/generation_manifest.csv",
+  workspacePrefix: "/Workspace/Shared/utilities",
+  notebooksOutDir: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch/distractors/assets/notebooks",
+  taskId: "TASK-001-top-fee-revenue-branch",
+  taskBundle: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch",
+  taskFile: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch/task.yaml",
+  anchorNotebookManifest: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch/anchors/assets/notebooks/notebooks.yaml",
+  distractorNotebookManifest: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch/distractors/assets/notebooks/notebooks.yaml",
+  geniePromptOut: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch/genie_prompts/TASK-001-top-fee-revenue-branch-genie.md",
+  genieResponseOut: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch/genie_responses/TASK-001-top-fee-revenue-branch-genie.json",
+  harnessOut: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch/reports/harness/TASK-001-top-fee-revenue-branch-harness.json",
+  workspaceMetadataSql: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch/anchors/non_assets/scripts/apply_comments.sql",
+  genieSpaceConfig: "workspace/meridian_mid_sized_bank/generated_data/genie/TASK-001_gold_fqns_space_config.json",
   genieSpaceId: "<genie-space-id>",
   envFile: ".env",
 };
@@ -24,8 +31,9 @@ const OPTIONS = {
   notebookMode: ["both", "anchors", "distractors"],
   codeMode: ["both", "sql", "python"],
   composition: ["separate", "same", "mixed"],
-  surface: ["data", "notebooks"],
-  ablation: ["on", "off"],
+  variant: ["gold", "anchors", "distractors", "full"],
+  executor: ["databricks", "sqlite"],
+  notebookAssetMode: ["distractors", "anchors", "both"],
   dryRun: [
     { value: "", label: "Off" },
     { value: "--dry-run", label: "On (--dry-run)" },
@@ -42,80 +50,15 @@ const OPTIONS = {
     { value: "", label: "Deterministic only" },
     { value: "--llm-sql-judge", label: "Add LLM SQL judge" },
   ],
-  schemaComments: [
-    { value: "", label: "Include schema comments" },
-    { value: "--no-include-schema-comments", label: "Table/column comments only" },
-  ],
-  assetSelection: [
-    { value: "all", label: "All asset tables" },
-    { value: "selected", label: "Selected taxonomy IDs" },
-    { value: "random", label: "Random taxonomy sample" },
-  ],
-  goldSource: [
-    { value: "generate", label: "Generate gold now" },
-    { value: "manifest", label: "Use existing gold CSV manifest" },
-  ],
-  assetsOnly: [
-    { value: "", label: "Gold + asset tables" },
-    { value: "--assets-only", label: "Asset tables only" },
-  ],
   extraTables: [
     { value: "", label: "Fail extra tables" },
     { value: "--allow-extra-tables", label: "Allow extra tables" },
   ],
-};
-
-const GENERATE_DATA_OUTPUTS = {
-  all: {
-    sqliteOut: "verification/runs/full_seed.sqlite",
-    csvDir: "verification/exports/full_csv",
-    schemaJsonDir: "verification/schema/full_json",
-  },
-  selected: {
-    sqliteOut: "verification/runs/selected_assets_seed.sqlite",
-    csvDir: "verification/exports/selected_assets_csv",
-    schemaJsonDir: "verification/schema/selected_assets_json",
-  },
-  random: {
-    sqliteOut: "verification/runs/random_assets_seed.sqlite",
-    csvDir: "verification/exports/random_assets_csv",
-    schemaJsonDir: "verification/schema/random_assets_json",
-  },
-  manifest: {
-    sqliteOut: "verification/runs/gold_plus_assets_from_manifest.sqlite",
-    csvDir: "verification/exports/gold_plus_assets_from_manifest_csv",
-    schemaJsonDir: "verification/schema/gold_plus_assets_from_manifest_json",
-  },
-  assetsOnly: {
-    sqliteOut: "verification/runs/assets_only_seed.sqlite",
-    csvDir: "verification/exports/assets_only_csv",
-    schemaJsonDir: "verification/schema/assets_only_json",
-  },
-};
-
-const HELP_CONTENT = {
-  assetSelection: {
-    title: "Asset selection",
-    items: [
-      ["All asset tables", "Generate every available table anchor/distractor type."],
-      ["Selected taxonomy IDs", "Show ID fields and include only the anchor/distractor IDs you enter."],
-      ["Random taxonomy sample", "Show count fields and sample that many anchor/distractor types using the seed."],
-    ],
-  },
-  goldSource: {
-    title: "Gold source",
-    items: [
-      ["Generate gold now", "Rebuild gold tables in this run, then generate assets from those tables."],
-      ["Use existing gold CSV manifest", "Read an existing generation_manifest.csv and generate assets from that exact gold CSV state."],
-    ],
-  },
-  assetsOnly: {
-    title: "Output contents with existing gold",
-    items: [
-      ["Gold + asset tables", "Write the existing gold tables plus generated asset tables to the output."],
-      ["Asset tables only", "Write only the generated anchor/distractor asset tables."],
-    ],
-  },
+  deleteStaging: [
+    { value: "", label: "Keep staging files" },
+    { value: "--delete-staging", label: "Delete staging files" },
+  ],
+  specSource: ["static", "file", "api"],
 };
 
 const TAXONOMY_REFERENCE = [
@@ -170,9 +113,149 @@ const TAXONOMY_REFERENCE = [
 
 const SECTIONS = [
   {
-    id: "deploy",
-    label: "Deploy",
-    description: "Push generated CSV data, notebooks, and workspace metadata into Databricks.",
+    id: "data",
+    label: "Gold Data",
+    description: "Generate the shared Meridian gold dataset and build task-local bundles from it.",
+    commands: [
+      {
+        id: "generate-gold-data",
+        label: "Generate shared gold data",
+        description: "Run the Meridian domain generator. It writes only trusted gold data into workspace/meridian_mid_sized_bank/generated_data/.",
+        fields: [
+          { key: "sqliteOut", label: "SQLite output", defaultValue: DEFAULTS.sqliteOut },
+          { key: "csvDir", label: "CSV output directory", defaultValue: DEFAULTS.csvDir },
+          { key: "schemaJsonDir", label: "JSON schema directory", defaultValue: DEFAULTS.schemaJsonDir },
+          { key: "seed", label: "Seed", defaultValue: "42" },
+          { key: "scale", label: "Scale", defaultValue: "1.0" },
+          { key: "usersPool", label: "Optional users_pool.json", defaultValue: "" },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} -m workspace.${DEFAULTS.environment}.generators.run`,
+          `--out ${quote(v.sqliteOut || DEFAULTS.sqliteOut)}`,
+          `--csv-dir ${quote(v.csvDir || DEFAULTS.csvDir)}`,
+          `--schema-json-dir ${quote(v.schemaJsonDir || DEFAULTS.schemaJsonDir)}`,
+          `--seed ${v.seed || "42"}`,
+          `--scale ${v.scale || "1.0"}`,
+          v.usersPool ? `--users-pool ${quote(v.usersPool)}` : "",
+        ]),
+      },
+      {
+        id: "build-all-bundles",
+        label: "Build all task bundles",
+        description: "Copy common gold artifacts into every task folder and refresh task-local scripts/manifests.",
+        fields: [
+          { key: "environment", label: "Environment", defaultValue: DEFAULTS.environment },
+          { key: "tasksDir", label: "Tasks directory", defaultValue: "tasks" },
+          { key: "overwrite", label: "Overwrite flag", defaultValue: "--overwrite", options: OPTIONS.overwrite },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/task_bundle.py build`,
+          "--all",
+          `--environment ${quote(v.environment || DEFAULTS.environment)}`,
+          `--tasks-dir ${quote(v.tasksDir || "tasks")}`,
+          v.overwrite ? "--overwrite" : "",
+        ]),
+      },
+      {
+        id: "build-one-bundle",
+        label: "Build one task bundle",
+        description: "Refresh a single task-local bundle from common generated gold artifacts.",
+        fields: [
+          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
+          { key: "environment", label: "Environment", defaultValue: DEFAULTS.environment },
+          { key: "overwrite", label: "Overwrite flag", defaultValue: "--overwrite", options: OPTIONS.overwrite },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/task_bundle.py build`,
+          `--task ${quote(v.taskFile || DEFAULTS.taskFile)}`,
+          `--environment ${quote(v.environment || DEFAULTS.environment)}`,
+          v.overwrite ? "--overwrite" : "",
+        ]),
+      },
+    ],
+  },
+  {
+    id: "task-assets",
+    label: "Task Assets",
+    description: "Load, apply, ablate, or remove the task-local gold, anchor, and distractor assets.",
+    commands: [
+      {
+        id: "load-task-gold",
+        label: "Load task gold",
+        description: "Load only the task's canonical gold tables into Databricks.",
+        fields: [{ key: "taskBundle", label: "Task folder", defaultValue: DEFAULTS.taskBundle }],
+        build: (v) => `bash ${quote(pathJoin(v.taskBundle || DEFAULTS.taskBundle, "scripts/load_gold.sh"))}`,
+      },
+      {
+        id: "apply-anchors",
+        label: "Apply anchors",
+        description: "Apply task-local anchor assets and non-asset anchor scripts.",
+        fields: [{ key: "taskBundle", label: "Task folder", defaultValue: DEFAULTS.taskBundle }],
+        build: (v) => `bash ${quote(pathJoin(v.taskBundle || DEFAULTS.taskBundle, "scripts/apply_anchors.sh"))}`,
+      },
+      {
+        id: "apply-distractors",
+        label: "Apply distractors",
+        description: "Apply task-local distractor assets and non-asset distractor scripts.",
+        fields: [{ key: "taskBundle", label: "Task folder", defaultValue: DEFAULTS.taskBundle }],
+        build: (v) => `bash ${quote(pathJoin(v.taskBundle || DEFAULTS.taskBundle, "scripts/apply_distractors.sh"))}`,
+      },
+      {
+        id: "load-full-task",
+        label: "Load full task",
+        description: "Load gold, anchors, and distractors for a task.",
+        fields: [{ key: "taskBundle", label: "Task folder", defaultValue: DEFAULTS.taskBundle }],
+        build: (v) => `bash ${quote(pathJoin(v.taskBundle || DEFAULTS.taskBundle, "scripts/load_full.sh"))}`,
+      },
+      {
+        id: "ablate-anchors",
+        label: "Ablate anchors",
+        description: "Remove or revert task-local anchors while leaving the task otherwise usable.",
+        fields: [{ key: "taskBundle", label: "Task folder", defaultValue: DEFAULTS.taskBundle }],
+        build: (v) => `bash ${quote(pathJoin(v.taskBundle || DEFAULTS.taskBundle, "scripts/ablate_anchors.sh"))}`,
+      },
+      {
+        id: "ablate-distractors",
+        label: "Ablate distractors",
+        description: "Remove or revert task-local distractors for the ablated arm of a check.",
+        fields: [{ key: "taskBundle", label: "Task folder", defaultValue: DEFAULTS.taskBundle }],
+        build: (v) => `bash ${quote(pathJoin(v.taskBundle || DEFAULTS.taskBundle, "scripts/ablate_distractors.sh"))}`,
+      },
+      {
+        id: "revert-full-script",
+        label: "Revert full task script",
+        description: "Run the task-local revert script generated with the bundle.",
+        fields: [{ key: "taskBundle", label: "Task folder", defaultValue: DEFAULTS.taskBundle }],
+        build: (v) => `bash ${quote(pathJoin(v.taskBundle || DEFAULTS.taskBundle, "scripts/revert_full.sh"))}`,
+      },
+      {
+        id: "revert-task-variant",
+        label: "Revert task variant",
+        description: "Use the bundler revert command to drop gold, anchors, distractors, or everything for a task.",
+        fields: [
+          { key: "taskBundle", label: "Task folder", defaultValue: DEFAULTS.taskBundle },
+          { key: "variant", label: "Variant", defaultValue: "full", options: OPTIONS.variant },
+          { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
+          { key: "warehouseId", label: "SQL warehouse ID", defaultValue: DEFAULTS.warehouseId },
+          { key: "deleteStaging", label: "Staging cleanup", defaultValue: "", options: OPTIONS.deleteStaging },
+          { key: "dryRun", label: "Dry run flag", defaultValue: "--dry-run", options: OPTIONS.dryRun },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/task_bundle.py revert`,
+          `--bundle ${quote(v.taskBundle || DEFAULTS.taskBundle)}`,
+          `--variant ${v.variant || "full"}`,
+          v.profile ? `--profile ${v.profile}` : "",
+          v.warehouseId ? `--warehouse-id ${v.warehouseId}` : "",
+          v.deleteStaging ? "--delete-staging" : "",
+          v.dryRun ? "--dry-run" : "",
+        ]),
+      },
+    ],
+  },
+  {
+    id: "databricks",
+    label: "Databricks Push",
+    description: "Create workspace folders, push task-local notebooks, load manifests, and run task-local SQL scripts.",
     commands: [
       {
         id: "whoami",
@@ -182,9 +265,46 @@ const SECTIONS = [
         build: (v) => `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} whoami`,
       },
       {
+        id: "create-workspace-dir",
+        label: "Create workspace folder",
+        description: "Create a task or utility folder in Databricks Workspace without uploading assets.",
+        fields: [
+          { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
+          { key: "workspacePath", label: "Workspace path", defaultValue: "/Workspace/Shared/utilities" },
+          { key: "subdirs", label: "Subdirectories, one per line", defaultValue: "", multiline: true },
+          { key: "dryRun", label: "Dry run flag", defaultValue: "--dry-run", options: OPTIONS.dryRun },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} create-workspace-dir`,
+          `--workspace-path ${quote(v.workspacePath || "/Workspace/Shared/utilities")}`,
+          ...lines(v.subdirs).map((subdir) => `--subdir ${quote(subdir)}`),
+          v.dryRun ? "--dry-run" : "",
+        ]),
+      },
+      {
+        id: "push-task-notebooks",
+        label: "Push task notebooks",
+        description: "Import task-local anchor and/or distractor notebooks. Manifest workspace paths are used as-is.",
+        fields: [
+          { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
+          { key: "mode", label: "Notebook set", defaultValue: "distractors", options: OPTIONS.notebookAssetMode, affectsVisibility: true },
+          { key: "anchorManifest", label: "Anchor notebook manifest", defaultValue: DEFAULTS.anchorNotebookManifest, showWhen: (v) => v.mode === "anchors" || v.mode === "both" },
+          { key: "distractorManifest", label: "Distractor notebook manifest", defaultValue: DEFAULTS.distractorNotebookManifest, showWhen: (v) => v.mode === "distractors" || v.mode === "both" },
+          { key: "overwrite", label: "Overwrite flag", defaultValue: "--overwrite", options: OPTIONS.overwrite },
+          { key: "dryRun", label: "Dry run flag", defaultValue: "", options: OPTIONS.dryRun },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} push-notebooks`,
+          ...(v.mode === "anchors" || v.mode === "both" ? [`--manifest ${quote(v.anchorManifest || DEFAULTS.anchorNotebookManifest)}`] : []),
+          ...(v.mode === "distractors" || v.mode === "both" ? [`--manifest ${quote(v.distractorManifest || DEFAULTS.distractorNotebookManifest)}`] : []),
+          v.overwrite ? "--overwrite" : "",
+          v.dryRun ? "--dry-run" : "",
+        ]),
+      },
+      {
         id: "load-manifest",
-        label: "Overwrite data from manifest",
-        description: "Upload every CSV listed in generation_manifest.csv and write the target Delta tables.",
+        label: "Load manifest tables",
+        description: "Upload every CSV listed in a task-local generation_manifest.csv and write the target Delta tables.",
         fields: [
           { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
           { key: "manifest", label: "CSV generation manifest", defaultValue: DEFAULTS.manifest },
@@ -194,28 +314,7 @@ const SECTIONS = [
         ],
         build: (v) => joinCommand([
           `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} load-manifest`,
-          `--manifest ${quote(v.manifest)}`,
-          `--mode ${v.mode || "replace"}`,
-          v.warehouseId ? `--warehouse-id ${v.warehouseId}` : "",
-          v.dryRun ? "--dry-run" : "",
-        ]),
-      },
-      {
-        id: "load-csv",
-        label: "Upload one CSV",
-        description: "Infer the target table for one CSV from the generation manifest.",
-        fields: [
-          { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
-          { key: "csvFile", label: "CSV file", defaultValue: "verification/exports/full_csv/certified/branches.csv" },
-          { key: "manifest", label: "CSV generation manifest", defaultValue: DEFAULTS.manifest },
-          { key: "mode", label: "Write mode", defaultValue: "replace", options: OPTIONS.writeMode },
-          { key: "warehouseId", label: "SQL warehouse ID", defaultValue: DEFAULTS.warehouseId },
-          { key: "dryRun", label: "Dry run flag", defaultValue: "", options: OPTIONS.dryRun },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} load-csv`,
-          `--csv-file ${quote(v.csvFile)}`,
-          `--manifest ${quote(v.manifest)}`,
+          `--manifest ${quote(v.manifest || DEFAULTS.manifest)}`,
           `--mode ${v.mode || "replace"}`,
           v.warehouseId ? `--warehouse-id ${v.warehouseId}` : "",
           v.dryRun ? "--dry-run" : "",
@@ -224,7 +323,7 @@ const SECTIONS = [
       {
         id: "drop-manifest",
         label: "Drop manifest tables",
-        description: "Drop every Databricks table listed in the CSV generation manifest.",
+        description: "Drop every Databricks table listed in a task-local generation_manifest.csv.",
         fields: [
           { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
           { key: "manifest", label: "CSV generation manifest", defaultValue: DEFAULTS.manifest },
@@ -233,41 +332,18 @@ const SECTIONS = [
         ],
         build: (v) => joinCommand([
           `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} drop-manifest`,
-          `--manifest ${quote(v.manifest)}`,
+          `--manifest ${quote(v.manifest || DEFAULTS.manifest)}`,
           v.warehouseId ? `--warehouse-id ${v.warehouseId}` : "",
           v.dryRun ? "--dry-run" : "",
         ]),
       },
       {
-        id: "push-notebooks",
-        label: "Overwrite notebooks",
-        description: "Import notebook source files from one or more notebook manifests.",
+        id: "run-sql-file",
+        label: "Run task SQL file",
+        description: "Run task-local SQL such as anchor/distractor comment scripts.",
         fields: [
           { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
-          {
-            key: "notebookManifests",
-            label: "Notebook manifests, one per line",
-            defaultValue:
-              "workspace/manifests/gold/notebooks.yaml\nworkspace/manifests/anchors/notebooks.yaml\nworkspace/manifests/distractor/notebooks.yaml",
-            multiline: true,
-          },
-          { key: "overwrite", label: "Overwrite flag", defaultValue: "--overwrite", options: OPTIONS.overwrite },
-          { key: "dryRun", label: "Dry run flag", defaultValue: "", options: OPTIONS.dryRun },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} push-notebooks`,
-          ...lines(v.notebookManifests).map((manifest) => `--manifest ${quote(manifest)}`),
-          v.overwrite ? "--overwrite" : "",
-          v.dryRun ? "--dry-run" : "",
-        ]),
-      },
-      {
-        id: "apply-workspace-metadata",
-        label: "Apply workspace metadata",
-        description: "Run generated schema/table/column metadata SQL against Databricks.",
-        fields: [
-          { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
-          { key: "sqlFile", label: "Workspace metadata SQL file", defaultValue: DEFAULTS.workspaceMetadataSql },
+          { key: "sqlFile", label: "SQL file", defaultValue: DEFAULTS.workspaceMetadataSql },
           { key: "warehouseId", label: "SQL warehouse ID", defaultValue: DEFAULTS.warehouseId },
           { key: "dryRun", label: "Dry run flag", defaultValue: "--dry-run", options: OPTIONS.dryRun },
         ],
@@ -276,6 +352,122 @@ const SECTIONS = [
           `--sql-file ${quote(v.sqlFile || DEFAULTS.workspaceMetadataSql)}`,
           v.warehouseId ? `--warehouse-id ${v.warehouseId}` : "",
           v.dryRun ? "--dry-run" : "",
+        ]),
+      },
+      {
+        id: "delete-workspace-path",
+        label: "Delete workspace path",
+        description: "Remove a Databricks Workspace notebook or folder, such as a utility notebook distractor.",
+        fields: [
+          { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
+          { key: "workspacePath", label: "Workspace path", defaultValue: "/Workspace/Shared/utilities/fee_revenue_rank_direction_review.py" },
+          {
+            key: "recursive",
+            label: "Recursive flag",
+            defaultValue: "",
+            options: [
+              { value: "", label: "Off" },
+              { value: "--recursive", label: "On (--recursive)" },
+            ],
+          },
+          { key: "dryRun", label: "Dry run flag", defaultValue: "--dry-run", options: OPTIONS.dryRun },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/databricks_sdk_ops.py --profile ${v.profile || DEFAULTS.profile} delete-workspace-path`,
+          `--workspace-path ${quote(v.workspacePath)}`,
+          v.recursive ? "--recursive" : "",
+          v.dryRun ? "--dry-run" : "",
+        ]),
+      },
+    ],
+  },
+  {
+    id: "notebooks",
+    label: "Notebook Generation",
+    description: "Generate task-local notebook assets from static specs, a JSON spec file, or the OpenAI API.",
+    commands: [
+      {
+        id: "generate-task-notebooks",
+        label: "Generate task notebooks",
+        description: "Write notebook source files into a task's anchors/assets/notebooks or distractors/assets/notebooks folder and update manifests.",
+        fields: [
+          { key: "mode", label: "Mode", defaultValue: "distractors", options: OPTIONS.notebookMode, affectsVisibility: true },
+          { key: "ids", label: "Notebook taxonomy IDs", defaultValue: "1.b.i,1.b.iii", taxonomyReference: true },
+          { key: "specSource", label: "Spec source", defaultValue: "static", options: OPTIONS.specSource, affectsVisibility: true },
+          { key: "specFile", label: "Spec JSON file", defaultValue: "", showWhen: (v) => v.specSource === "file" },
+          { key: "specOut", label: "API-generated spec JSON", defaultValue: "tasks/meridian_mid_sized_bank/TASK-001-top-fee-revenue-branch/distractors/assets/notebooks/notebook_specs.json", showWhen: (v) => v.specSource === "api" },
+          { key: "envFile", label: "Env file", defaultValue: DEFAULTS.envFile, showWhen: (v) => v.specSource === "api" },
+          { key: "apiModel", label: "API model", defaultValue: "gpt-4.1-mini", showWhen: (v) => v.specSource === "api" },
+          { key: "codeMode", label: "Code mode", defaultValue: "both", options: OPTIONS.codeMode },
+          { key: "composition", label: "Composition", defaultValue: "separate", options: OPTIONS.composition },
+          { key: "outDir", label: "Notebook output directory", defaultValue: DEFAULTS.notebooksOutDir },
+          { key: "workspacePrefix", label: "Workspace prefix", defaultValue: DEFAULTS.workspacePrefix },
+          { key: "anchorsManifest", label: "Anchor notebook manifest", defaultValue: DEFAULTS.anchorNotebookManifest },
+          { key: "distractorsManifest", label: "Distractor notebook manifest", defaultValue: DEFAULTS.distractorNotebookManifest },
+          { key: "dryRun", label: "Dry run flag", defaultValue: "", options: OPTIONS.dryRun },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} -m tools.generate_task_notebooks`,
+          `--environment ${DEFAULTS.environment}`,
+          `--mode ${v.mode || "distractors"}`,
+          v.ids ? `--ids ${v.ids}` : "--all",
+          `--spec-source ${v.specSource || "static"}`,
+          v.specSource === "file" && v.specFile ? `--spec-file ${quote(v.specFile)}` : "",
+          v.specSource === "api" ? `--spec-out ${quote(v.specOut)}` : "",
+          v.specSource === "api" ? `--env-file ${quote(v.envFile || DEFAULTS.envFile)}` : "",
+          v.specSource === "api" && v.apiModel ? `--api-model ${quote(v.apiModel)}` : "",
+          `--code-mode ${v.codeMode || "both"}`,
+          `--composition ${v.composition || "separate"}`,
+          `--out-dir ${quote(v.outDir || DEFAULTS.notebooksOutDir)}`,
+          `--workspace-prefix ${quote(v.workspacePrefix || DEFAULTS.workspacePrefix)}`,
+          `--anchors-manifest ${quote(v.anchorsManifest || DEFAULTS.anchorNotebookManifest)}`,
+          `--distractors-manifest ${quote(v.distractorsManifest || DEFAULTS.distractorNotebookManifest)}`,
+          v.dryRun ? "--dry-run" : "",
+        ]),
+      },
+    ],
+  },
+  {
+    id: "genie",
+    label: "Genie",
+    description: "Build prompts/configs, create Genie spaces, ask Genie, and save the response under the task folder.",
+    commands: [
+      {
+        id: "build-genie-prompt",
+        label: "Build Genie prompt",
+        description: "Build a task-local Genie prompt from task.yaml: question plus eval JSON contract only.",
+        fields: [
+          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
+          { key: "minimalHint", label: "Minimal hint", defaultValue: "", options: OPTIONS.minimalHint },
+          { key: "out", label: "Output prompt path", defaultValue: DEFAULTS.geniePromptOut },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/genie_prompt_builder.py ${quote(v.taskFile || DEFAULTS.taskFile)}`,
+          v.minimalHint ? "--include-minimal-hint" : "",
+          v.out ? `--out ${quote(v.out)}` : "",
+        ]),
+      },
+      {
+        id: "build-genie-space-config",
+        label: "Build Genie Space config",
+        description: "Create a Genie Space config using a task and generated schema JSON.",
+        fields: [
+          { key: "schemaDir", label: "JSON schema directory", defaultValue: DEFAULTS.schemaJsonDir },
+          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
+          { key: "out", label: "Output config JSON", defaultValue: DEFAULTS.genieSpaceConfig },
+          { key: "title", label: "Space title", defaultValue: "Meridian Trust task space" },
+          { key: "parentPath", label: "Parent workspace path", defaultValue: "/Workspace/Shared" },
+          { key: "warehouseId", label: "SQL warehouse ID placeholder", defaultValue: DEFAULTS.warehouseId },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/build_genie_space_config.py`,
+          `--environment ${DEFAULTS.environment}`,
+          `--schema-dir ${quote(v.schemaDir || DEFAULTS.schemaJsonDir)}`,
+          `--task ${quote(v.taskFile || DEFAULTS.taskFile)}`,
+          `--out ${quote(v.out || DEFAULTS.genieSpaceConfig)}`,
+          v.title ? `--title ${quote(v.title)}` : "",
+          v.parentPath ? `--parent-path ${quote(v.parentPath)}` : "",
+          v.warehouseId ? `--warehouse-id ${quote(v.warehouseId)}` : "",
         ]),
       },
       {
@@ -306,307 +498,10 @@ const SECTIONS = [
           v.dryRun ? "--dry-run" : "",
         ]),
       },
-    ],
-  },
-  {
-    id: "generate",
-    label: "Generate",
-    description: "Create local gold data, generated anchor/distractor asset data, and notebook source files.",
-    commands: [
-      {
-        id: "generate-data",
-        label: "Generate gold + asset data",
-        description: "Build gold tables plus generated table anchors and table distractors; choose all, selected IDs, or random sampling.",
-        fields: [
-          {
-            key: "assetSelection",
-            label: "Asset selection",
-            defaultValue: "all",
-            options: OPTIONS.assetSelection,
-            affectsVisibility: true,
-            affectsOutputDefaults: true,
-            helpKey: "assetSelection",
-          },
-          {
-            key: "goldSource",
-            label: "Gold source",
-            defaultValue: "generate",
-            options: OPTIONS.goldSource,
-            affectsVisibility: true,
-            affectsOutputDefaults: true,
-            helpKey: "goldSource",
-          },
-          {
-            key: "goldManifest",
-            label: "Existing gold CSV manifest",
-            defaultValue: "verification/exports/gold_csv/generation_manifest.csv",
-            showWhen: (v) => v.goldSource === "manifest",
-          },
-          {
-            key: "assetsOnly",
-            label: "Output contents with existing gold",
-            defaultValue: "",
-            options: OPTIONS.assetsOnly,
-            showWhen: (v) => v.goldSource === "manifest",
-            affectsOutputDefaults: true,
-            helpKey: "assetsOnly",
-          },
-          {
-            key: "anchorTypes",
-            label: "Anchor taxonomy IDs",
-            defaultValue: "1.a.i,2.a.ii",
-            taxonomyReference: true,
-            showWhen: (v) => v.assetSelection === "selected",
-          },
-          {
-            key: "distractorTypes",
-            label: "Distractor taxonomy IDs",
-            defaultValue: "1.a.i,1.a.viii",
-            taxonomyReference: true,
-            showWhen: (v) => v.assetSelection === "selected",
-          },
-          {
-            key: "randomAnchors",
-            label: "Random anchor count",
-            defaultValue: "2",
-            showWhen: (v) => v.assetSelection === "random",
-          },
-          {
-            key: "randomDistractors",
-            label: "Random distractor count",
-            defaultValue: "3",
-            showWhen: (v) => v.assetSelection === "random",
-          },
-          { key: "sqliteOut", label: "SQLite output", defaultValue: DEFAULTS.sqliteOut },
-          { key: "csvDir", label: "CSV output directory", defaultValue: DEFAULTS.csvDir },
-          { key: "schemaJsonDir", label: "JSON schema directory", defaultValue: DEFAULTS.schemaJsonDir },
-          { key: "seed", label: "Seed", defaultValue: "42" },
-          { key: "scale", label: "Scale", defaultValue: "1.0" },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} -m workspace.generators.run`,
-          "--target sqlite",
-          v.goldSource === "manifest" ? `--gold-manifest ${quote(v.goldManifest)}` : "",
-          v.goldSource === "manifest" && v.assetsOnly ? "--assets-only" : "",
-          v.assetSelection === "selected" ? `--anchor-types ${v.anchorTypes || "1.a.i,2.a.ii"}` : "",
-          v.assetSelection === "selected" ? `--distractor-types ${v.distractorTypes || "1.a.i,1.a.viii"}` : "",
-          v.assetSelection === "random" ? `--random-anchors ${v.randomAnchors || "2"}` : "",
-          v.assetSelection === "random" ? `--random-distractors ${v.randomDistractors || "3"}` : "",
-          `--out ${quote(v.sqliteOut)}`,
-          `--csv-dir ${quote(v.csvDir)}`,
-          `--schema-json-dir ${quote(v.schemaJsonDir)}`,
-          `--seed ${v.seed || "42"}`,
-          `--scale ${v.scale || "1.0"}`,
-        ]),
-      },
-      {
-        id: "generate-gold-data",
-        label: "Generate gold-only data",
-        description: "Build only the gold workspace tables without generated anchor/distractor asset tables.",
-        fields: [
-          { key: "sqliteOut", label: "SQLite output", defaultValue: "verification/runs/gold_seed.sqlite" },
-          { key: "csvDir", label: "CSV output directory", defaultValue: "verification/exports/gold_csv" },
-          { key: "schemaJsonDir", label: "JSON schema directory", defaultValue: "verification/schema/gold_json" },
-          { key: "seed", label: "Seed", defaultValue: "42" },
-          { key: "scale", label: "Scale", defaultValue: "1.0" },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} -m workspace.generators.run`,
-          "--target sqlite",
-          "--gold-only",
-          `--out ${quote(v.sqliteOut)}`,
-          `--csv-dir ${quote(v.csvDir)}`,
-          `--schema-json-dir ${quote(v.schemaJsonDir)}`,
-          `--seed ${v.seed || "42"}`,
-          `--scale ${v.scale || "1.0"}`,
-        ]),
-      },
-      {
-        id: "generate-notebooks",
-        label: "Generate notebooks from static specs",
-        description: "Create notebook assets from built-in specs and update notebook manifests. This does not call the LLM.",
-        fields: [
-          { key: "mode", label: "Mode", defaultValue: "both", options: OPTIONS.notebookMode },
-          { key: "ids", label: "Notebook taxonomy IDs", defaultValue: "1.b.i,1.b.iii", taxonomyReference: true },
-          { key: "codeMode", label: "Code mode", defaultValue: "both", options: OPTIONS.codeMode },
-          { key: "composition", label: "Composition", defaultValue: "separate", options: OPTIONS.composition },
-          { key: "outDir", label: "Notebook output directory", defaultValue: DEFAULTS.notebooksOutDir },
-          { key: "workspacePrefix", label: "Workspace prefix", defaultValue: DEFAULTS.workspacePrefix },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} -m workspace.generators.generate_notebooks`,
-          `--mode ${v.mode || "both"}`,
-          v.ids ? `--ids ${v.ids}` : "--all",
-          `--code-mode ${v.codeMode || "both"}`,
-          `--composition ${v.composition || "separate"}`,
-          `--out-dir ${quote(v.outDir)}`,
-          `--workspace-prefix ${quote(v.workspacePrefix)}`,
-        ]),
-      },
-      {
-        id: "generate-llm-notebooks",
-        label: "Generate notebooks with LLM specs",
-        description: "Ask the LLM for notebook specs, then write notebook files and manifests.",
-        fields: [
-          { key: "anchorCount", label: "Anchor notebook count", defaultValue: "2" },
-          { key: "distractorCount", label: "Distractor notebook count", defaultValue: "4" },
-          { key: "envFile", label: "Env file", defaultValue: DEFAULTS.envFile },
-          { key: "specOut", label: "Generated spec JSON", defaultValue: "workspace/generators/notebook_specs/generated_notebook_specs.json" },
-          { key: "codeMode", label: "Code mode", defaultValue: "both", options: OPTIONS.codeMode },
-          { key: "composition", label: "Composition", defaultValue: "separate", options: OPTIONS.composition },
-          { key: "outDir", label: "Notebook output directory", defaultValue: DEFAULTS.notebooksOutDir },
-          { key: "workspacePrefix", label: "Workspace prefix", defaultValue: DEFAULTS.workspacePrefix },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} -m workspace.generators.generate_notebooks`,
-          "--mode both",
-          `--anchor-count ${v.anchorCount || "2"}`,
-          `--distractor-count ${v.distractorCount || "4"}`,
-          "--spec-source llm",
-          `--spec-out ${quote(v.specOut)}`,
-          `--env-file ${quote(v.envFile)}`,
-          `--code-mode ${v.codeMode || "both"}`,
-          `--composition ${v.composition || "separate"}`,
-          `--out-dir ${quote(v.outDir)}`,
-          `--workspace-prefix ${quote(v.workspacePrefix)}`,
-        ]),
-      },
-    ],
-  },
-  {
-    id: "genie",
-    label: "Task Authoring",
-    description: "Create task templates and build the Genie prompt that should be sent to Databricks Genie.",
-    commands: [
-      {
-        id: "create-task",
-        label: "Create task template",
-        description: "Create a new task YAML from tasks/_template.yaml and fill the basic fields.",
-        fields: [
-          { key: "taskId", label: "Task ID / filename stem", defaultValue: DEFAULTS.taskId },
-          { key: "title", label: "Title", defaultValue: "Human-readable title" },
-          { key: "question", label: "Question", defaultValue: "TBD - the natural-language question the agent receives.", multiline: true },
-          { key: "tasksDir", label: "Tasks directory", defaultValue: "tasks" },
-          { key: "overwrite", label: "Overwrite flag", defaultValue: "", options: OPTIONS.overwrite },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} tools/create_task.py`,
-          `--task-id ${quote(v.taskId || DEFAULTS.taskId)}`,
-          v.title ? `--title ${quote(v.title)}` : "",
-          v.question ? `--question ${quote(v.question)}` : "",
-          `--tasks-dir ${quote(v.tasksDir || "tasks")}`,
-          v.overwrite ? "--overwrite" : "",
-        ]),
-      },
-      {
-        id: "genie-prompt",
-        label: "Build Genie prompt",
-        description: "Build the safe Genie prompt from a task YAML: question plus eval JSON contract only.",
-        fields: [
-          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
-          { key: "minimalHint", label: "Minimal hint", defaultValue: "", options: OPTIONS.minimalHint },
-          { key: "out", label: "Output markdown path", defaultValue: DEFAULTS.geniePromptOut },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} tools/genie_prompt_builder.py ${quote(v.taskFile)}`,
-          v.minimalHint ? "--include-minimal-hint" : "",
-          v.out ? `--out ${quote(v.out)}` : "",
-        ]),
-      },
-      {
-        id: "build-workspace-metadata",
-        label: "Build workspace metadata SQL",
-        description: "Create neutral Unity Catalog comments from task-declared informative and distracting table/column metadata.",
-        fields: [
-          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
-          { key: "out", label: "Output SQL file", defaultValue: DEFAULTS.workspaceMetadataSql },
-          { key: "schemaComments", label: "Schema comments", defaultValue: "", options: OPTIONS.schemaComments },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} tools/build_workspace_metadata_sql.py`,
-          `--task ${quote(v.taskFile)}`,
-          `--out ${quote(v.out || DEFAULTS.workspaceMetadataSql)}`,
-          v.schemaComments ? "--no-include-schema-comments" : "",
-        ]),
-      },
-      {
-        id: "build-genie-space-config",
-        label: "Build Genie Space config",
-        description: "Create a serialized Genie Space config from local schema metadata and task questions/gold SQL.",
-        fields: [
-          { key: "schemaDir", label: "JSON schema directory", defaultValue: DEFAULTS.schemaJsonDir },
-          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
-          { key: "out", label: "Output config JSON", defaultValue: DEFAULTS.genieSpaceConfig },
-          { key: "title", label: "Space title", defaultValue: "duck-rl-gym Genie Space" },
-          { key: "warehouseId", label: "SQL warehouse ID placeholder", defaultValue: DEFAULTS.warehouseId },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} tools/build_genie_space_config.py`,
-          `--schema-dir ${quote(v.schemaDir || DEFAULTS.schemaJsonDir)}`,
-          `--task ${quote(v.taskFile || DEFAULTS.taskFile)}`,
-          `--out ${quote(v.out || DEFAULTS.genieSpaceConfig)}`,
-          v.title ? `--title ${quote(v.title)}` : "",
-          v.warehouseId ? `--warehouse-id ${quote(v.warehouseId)}` : "",
-        ]),
-      },
-    ],
-  },
-  {
-    id: "tasks",
-    label: "Task Verification",
-    description: "Validate task YAML, build coverage, and check saved Genie responses against canonical answers.",
-    commands: [
-      {
-        id: "validate-tasks",
-        label: "Validate task specs",
-        description: "Run the task spec validator.",
-        fields: [{ key: "tasksDir", label: "Tasks directory", defaultValue: "tasks" }],
-        build: (v) => `${PYTHON} tools/validate_task_specs.py --tasks-dir ${quote(v.tasksDir)}`,
-      },
-      {
-        id: "coverage",
-        label: "Build coverage matrix",
-        description: "Create taxonomy coverage markdown from task declarations.",
-        fields: [
-          { key: "tasksDir", label: "Tasks directory", defaultValue: "tasks" },
-          { key: "coverageOut", label: "Coverage output", defaultValue: "verification/coverage.md" },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} tools/coverage_matrix.py`,
-          `--tasks-dir ${quote(v.tasksDir)}`,
-          `--out ${quote(v.coverageOut)}`,
-        ]),
-      },
-      {
-        id: "verify-genie-response",
-        label: "Verify Genie response",
-        description: "Check Genie SQL output, reported result rows, and semantic SQL/assets against a task YAML.",
-        fields: [
-          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
-          { key: "responseFile", label: "Saved Genie response", defaultValue: DEFAULTS.genieResponseOut },
-          { key: "dbPath", label: "SQLite DB path", defaultValue: DEFAULTS.sqliteOut },
-          { key: "out", label: "Harness report output", defaultValue: "verification/runs/TASK-001-harness.json" },
-          { key: "llmSqlJudge", label: "LLM SQL judge", defaultValue: "", options: OPTIONS.llmJudge },
-          { key: "llmModel", label: "LLM judge model", defaultValue: "gpt-4.1-mini" },
-          { key: "envFile", label: "Env file", defaultValue: DEFAULTS.envFile },
-          { key: "allowExtraTables", label: "Extra tables", defaultValue: "", options: OPTIONS.extraTables },
-        ],
-        build: (v) => joinCommand([
-          `${PYTHON} -m harness.runner`,
-          `--task ${quote(v.taskFile)}`,
-          `--response ${quote(v.responseFile)}`,
-          `--db ${quote(v.dbPath)}`,
-          v.out ? `--out ${quote(v.out)}` : "",
-          v.allowExtraTables ? "--allow-extra-tables" : "",
-          v.llmSqlJudge ? "--llm-sql-judge" : "",
-          v.llmSqlJudge && v.llmModel ? `--llm-model ${quote(v.llmModel)}` : "",
-          v.llmSqlJudge && v.envFile ? `--env-file ${quote(v.envFile)}` : "",
-        ]),
-      },
       {
         id: "ask-genie",
         label: "Ask Genie with prompt",
-        description: "Start a Genie conversation using a generated prompt file so the response can be saved and verified.",
+        description: "Start a Genie conversation using a generated task prompt and save the JSON response.",
         fields: [
           { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile },
           { key: "spaceId", label: "Genie Space ID", defaultValue: DEFAULTS.genieSpaceId },
@@ -627,34 +522,96 @@ const SECTIONS = [
     ],
   },
   {
-    id: "prompts",
-    label: "Tools",
-    description: "General repo utilities: prompt builders, local SQLite inspection, and table-name mapping helpers.",
+    id: "verify",
+    label: "Task Verification",
+    description: "Validate specs, build coverage, and run harness checks against saved Genie responses.",
     commands: [
       {
-        id: "anchor-distractor-prompt",
-        label: "Build anchor/distractor prompt",
-        description: "Create a markdown prompt for data or notebook surface generation.",
+        id: "validate-tasks",
+        label: "Validate task specs",
+        description: "Run the task spec validator.",
+        fields: [{ key: "tasksDir", label: "Tasks directory", defaultValue: "tasks" }],
+        build: (v) => `${PYTHON} tools/validate_task_specs.py --tasks-dir ${quote(v.tasksDir || "tasks")}`,
+      },
+      {
+        id: "coverage",
+        label: "Build coverage matrix",
+        description: "Create taxonomy coverage markdown from task declarations and harness reports.",
         fields: [
-          { key: "surface", label: "Surface", defaultValue: "data", options: OPTIONS.surface },
-          { key: "mode", label: "Mode", defaultValue: "both", options: OPTIONS.notebookMode },
-          { key: "ids", label: "Taxonomy IDs", defaultValue: "1.a.i,2.a.ii", taxonomyReference: true },
-          { key: "domain", label: "Domain focus", defaultValue: "" },
-          { key: "out", label: "Prompt output path", defaultValue: "workspace/generators/prompts/custom_anchor_distractor_prompt.md" },
+          { key: "tasksDir", label: "Tasks directory", defaultValue: "tasks/meridian_mid_sized_bank" },
+          { key: "coverageOut", label: "Coverage output", defaultValue: "tasks/meridian_mid_sized_bank/coverage.md" },
         ],
         build: (v) => joinCommand([
-          `${PYTHON} -m workspace.generators.anchor_distractor_prompt`,
-          `--surface ${v.surface || "data"}`,
-          `--mode ${v.mode || "both"}`,
-          `--ids ${v.ids || "1.a.i,2.a.ii"}`,
-          v.domain ? `--domain ${quote(v.domain)}` : "",
-          `--out ${quote(v.out)}`,
+          `${PYTHON} tools/coverage_matrix.py`,
+          `--tasks-dir ${quote(v.tasksDir || "tasks/meridian_mid_sized_bank")}`,
+          `--out ${quote(v.coverageOut || "tasks/meridian_mid_sized_bank/coverage.md")}`,
+        ]),
+      },
+      {
+        id: "verify-genie-response",
+        label: "Verify Genie response",
+        description: "Run the harness on a saved Genie response. Databricks executor uses the warehouse SQL dialect.",
+        fields: [
+          { key: "executor", label: "Executor", defaultValue: "databricks", options: OPTIONS.executor, affectsVisibility: true },
+          { key: "taskFile", label: "Task YAML", defaultValue: DEFAULTS.taskFile },
+          { key: "responseFile", label: "Saved Genie response", defaultValue: DEFAULTS.genieResponseOut },
+          { key: "profile", label: "Databricks profile", defaultValue: DEFAULTS.profile, showWhen: (v) => v.executor === "databricks" },
+          { key: "warehouseId", label: "SQL warehouse ID", defaultValue: DEFAULTS.warehouseId, showWhen: (v) => v.executor === "databricks" },
+          { key: "dbPath", label: "SQLite DB path", defaultValue: DEFAULTS.sqliteOut, showWhen: (v) => v.executor === "sqlite" },
+          { key: "out", label: "Harness report output", defaultValue: DEFAULTS.harnessOut },
+          { key: "allowExtraTables", label: "Extra tables", defaultValue: "", options: OPTIONS.extraTables },
+          { key: "llmSqlJudge", label: "LLM SQL judge", defaultValue: "", options: OPTIONS.llmJudge },
+          { key: "llmModel", label: "LLM judge model", defaultValue: "gpt-4.1-mini", showWhen: (v) => Boolean(v.llmSqlJudge) },
+          { key: "envFile", label: "Env file", defaultValue: DEFAULTS.envFile, showWhen: (v) => Boolean(v.llmSqlJudge) },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} -m harness.runner`,
+          `--task ${quote(v.taskFile || DEFAULTS.taskFile)}`,
+          `--response ${quote(v.responseFile || DEFAULTS.genieResponseOut)}`,
+          `--executor ${v.executor || "databricks"}`,
+          v.executor === "sqlite" ? `--db ${quote(v.dbPath || DEFAULTS.sqliteOut)}` : "",
+          v.executor !== "sqlite" && v.profile ? `--profile ${v.profile}` : "",
+          v.executor !== "sqlite" && v.warehouseId ? `--warehouse-id ${v.warehouseId}` : "",
+          v.out ? `--out ${quote(v.out)}` : "",
+          v.allowExtraTables ? "--allow-extra-tables" : "",
+          v.llmSqlJudge ? "--llm-sql-judge" : "",
+          v.llmSqlJudge && v.llmModel ? `--llm-model ${quote(v.llmModel)}` : "",
+          v.llmSqlJudge && v.envFile ? `--env-file ${quote(v.envFile)}` : "",
+        ]),
+      },
+    ],
+  },
+  {
+    id: "utilities",
+    label: "Utilities",
+    description: "Small helper commands for local SQL inspection and task creation.",
+    commands: [
+      {
+        id: "create-task",
+        label: "Create task template",
+        description: "Create a new task YAML from the shared task template.",
+        fields: [
+          { key: "taskId", label: "Task ID / filename stem", defaultValue: "TASK-011-new-task" },
+          { key: "title", label: "Title", defaultValue: "Human-readable title" },
+          { key: "question", label: "Question", defaultValue: "TBD - the natural-language question the agent receives.", multiline: true },
+          { key: "tasksDir", label: "Tasks root directory", defaultValue: "tasks" },
+          { key: "environment", label: "Environment", defaultValue: DEFAULTS.environment },
+          { key: "overwrite", label: "Overwrite flag", defaultValue: "", options: OPTIONS.overwrite },
+        ],
+        build: (v) => joinCommand([
+          `${PYTHON} tools/create_task.py`,
+          `--task-id ${quote(v.taskId || "TASK-011-new-task")}`,
+          v.title ? `--title ${quote(v.title)}` : "",
+          v.question ? `--question ${quote(v.question)}` : "",
+          `--tasks-dir ${quote(v.tasksDir || "tasks")}`,
+          `--environment ${quote(v.environment || DEFAULTS.environment)}`,
+          v.overwrite ? "--overwrite" : "",
         ]),
       },
       {
         id: "sqlite-query",
         label: "Run local SQL",
-        description: "Run SQL against SQLite while allowing canonical Databricks table names.",
+        description: "Run SQL against the local SQLite artifact while allowing canonical Databricks table names.",
         fields: [
           { key: "dbPath", label: "SQLite DB path", defaultValue: DEFAULTS.sqliteOut },
           {
@@ -667,7 +624,7 @@ const SECTIONS = [
         ],
         build: (v) => joinCommand([
           `${PYTHON} tools/sqlite_query.py`,
-          `--db ${quote(v.dbPath)}`,
+          `--db ${quote(v.dbPath || DEFAULTS.sqliteOut)}`,
           `--sql ${quote(v.sql)}`,
           "--show-sql",
         ]),
@@ -677,7 +634,7 @@ const SECTIONS = [
         label: "List SQLite mapping",
         description: "Show how Databricks 3-part table names map to local SQLite table names.",
         fields: [{ key: "dbPath", label: "SQLite DB path", defaultValue: DEFAULTS.sqliteOut }],
-        build: (v) => `${PYTHON} tools/sqlite_query.py --db ${quote(v.dbPath)} --list-mapping`,
+        build: (v) => `${PYTHON} tools/sqlite_query.py --db ${quote(v.dbPath || DEFAULTS.sqliteOut)} --list-mapping`,
       },
     ],
   },
@@ -696,12 +653,8 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   document.getElementById("copy-command").addEventListener("click", copyCommand);
   document.getElementById("taxonomy-close").addEventListener("click", closeTaxonomyModal);
-  document.getElementById("help-close").addEventListener("click", closeHelpModal);
   document.getElementById("taxonomy-modal").addEventListener("click", (event) => {
     if (event.target.id === "taxonomy-modal") closeTaxonomyModal();
-  });
-  document.getElementById("help-modal").addEventListener("click", (event) => {
-    if (event.target.id === "help-modal") closeHelpModal();
   });
 });
 
@@ -748,17 +701,11 @@ function renderFields() {
     const input = document.getElementById(`field-${field.key}`);
     input.addEventListener("input", (event) => {
       values[field.key] = event.target.value;
-      if (activeCommand.id === "generate-data" && field.affectsOutputDefaults) {
-        Object.assign(values, generateDataOutputDefaults(values));
-      }
       if (field.affectsVisibility) renderFields();
       updateOutput();
     });
     input.addEventListener("change", (event) => {
       values[field.key] = event.target.value;
-      if (activeCommand.id === "generate-data" && field.affectsOutputDefaults) {
-        Object.assign(values, generateDataOutputDefaults(values));
-      }
       if (field.affectsVisibility) renderFields();
       updateOutput();
     });
@@ -769,25 +716,12 @@ function visibleFields(command, currentValues) {
   return command.fields.filter((field) => !field.showWhen || field.showWhen(currentValues));
 }
 
-function generateDataOutputDefaults(currentValues) {
-  if (currentValues.goldSource === "manifest" && currentValues.assetsOnly) {
-    return GENERATE_DATA_OUTPUTS.assetsOnly;
-  }
-  if (currentValues.goldSource === "manifest") {
-    return GENERATE_DATA_OUTPUTS.manifest;
-  }
-  return GENERATE_DATA_OUTPUTS[currentValues.assetSelection || "all"] || GENERATE_DATA_OUTPUTS.all;
-}
-
 function renderField(field) {
   const inputId = `field-${field.key}`;
   const currentValue = values[field.key] ?? field.defaultValue ?? "";
-  const helpButton = field.helpKey
-    ? `<button type="button" class="help-button" data-help-key="${escapeHtml(field.helpKey)}" aria-label="Explain ${escapeHtml(field.label)}">?</button>`
-    : "";
   const label = field.taxonomyReference
     ? `<div class="field-label-row"><label class="field-label" for="${inputId}">${escapeHtml(field.label)}</label><button type="button" class="taxonomy-button" data-taxonomy-open="true">View IDs</button></div>`
-    : `<div class="field-label-row"><label class="field-label" for="${inputId}">${escapeHtml(field.label)}</label>${helpButton}</div>`;
+    : `<div class="field-label-row"><label class="field-label" for="${inputId}">${escapeHtml(field.label)}</label></div>`;
   if (field.options) {
     const options = field.options.map((option) => {
       const value = typeof option === "string" ? option : option.value;
@@ -822,9 +756,6 @@ document.addEventListener("click", (event) => {
   if (event.target.matches("[data-taxonomy-open='true']")) {
     openTaxonomyModal();
   }
-  if (event.target.matches("[data-help-key]")) {
-    openHelpModal(event.target.dataset.helpKey);
-  }
 });
 
 function openTaxonomyModal() {
@@ -835,29 +766,6 @@ function openTaxonomyModal() {
 
 function closeTaxonomyModal() {
   const modal = document.getElementById("taxonomy-modal");
-  modal.classList.remove("open");
-  modal.setAttribute("aria-hidden", "true");
-}
-
-function openHelpModal(helpKey) {
-  const content = HELP_CONTENT[helpKey];
-  if (!content) return;
-
-  document.getElementById("help-title").textContent = content.title;
-  document.getElementById("help-content").innerHTML = content.items.map(([title, body]) => `
-    <section class="help-section">
-      <h3>${escapeHtml(title)}</h3>
-      <p>${escapeHtml(body)}</p>
-    </section>
-  `).join("");
-
-  const modal = document.getElementById("help-modal");
-  modal.classList.add("open");
-  modal.setAttribute("aria-hidden", "false");
-}
-
-function closeHelpModal() {
-  const modal = document.getElementById("help-modal");
   modal.classList.remove("open");
   modal.setAttribute("aria-hidden", "true");
 }
@@ -893,6 +801,10 @@ function appendRedirect(command, outputPath) {
 
 function lines(value) {
   return String(value || "").split(/\r?\n/).map((line) => line.trim()).filter(Boolean);
+}
+
+function pathJoin(base, child) {
+  return `${String(base || "").replace(/\/+$/, "")}/${child.replace(/^\/+/, "")}`;
 }
 
 function escapeHtml(value) {
