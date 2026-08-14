@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" href="{{ url_for('static', filename='images/favicon.ico') }}" type="image/x-icon">
+    <title>Graph Visualizer - Turing Tooling</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/graph_visualizer.css') }}">
+</head>
+
+<body>
+    <header class="dashboard-header">
+        <a href='/'>
+            <div class="logo">
+                <img src="{{ url_for('static', filename='images/turing_logo.svg') }}" alt="turing image"
+                    style="width: 100px; scale: 1.5; display: block; margin: 0 auto;">
+            </div>
+        </a>
+    </header>
+
+    <section class="main-section">
+        <div class="page-header">
+            <h1>Graph Visualizer</h1>
+            <p class="header-description">
+                Upload a zipped seed <code>.sql</code> file plus a <code>.yaml</code> schema that
+                declares the tables, foreign-key connections, and hierarchy. Pick a table, an id,
+                and (optionally) a connection type to see everything connected to that id as a
+                colour-coded graph.
+            </p>
+        </div>
+
+        <!-- Action Cards -->
+        <div class="action-cards">
+            <div class="action-card" id="upload-card">
+                <div class="card-icon">📦</div>
+                <h3>Upload Dataset</h3>
+                <p>Upload a zip containing the seed .sql and a YAML schema file</p>
+            </div>
+            <div class="action-card" id="visualize-card">
+                <div class="card-icon">🕸️</div>
+                <h3>Visualize</h3>
+                <p>Filter by type, table and id, then explore the connected graph</p>
+            </div>
+        </div>
+
+        <!-- Upload Section -->
+        <div id="upload-section" class="content-section" style="display: none;">
+            <div class="section-header">
+                <h2>Upload Dataset</h2>
+                <button class="close-btn" onclick="closeSection('upload-section')">✕</button>
+            </div>
+
+            <div class="form-container">
+                <div class="form-group">
+                    <label for="dataset-name">Dataset Name (optional)</label>
+                    <input type="text" id="dataset-name" placeholder="e.g., notion_workspace"
+                        class="form-input">
+                </div>
+
+                <div class="form-group">
+                    <label for="sql-zip">Seed SQL (zipped, .zip)</label>
+                    <div class="file-input-wrapper" id="zip-drop-zone">
+                        <input type="file" id="sql-zip" accept=".zip" class="hidden-file-input">
+                        <label for="sql-zip" class="file-label">
+                            <span class="upload-icon">📁</span>
+                            <span id="zip-file-name">Choose .zip file or drag & drop</span>
+                        </label>
+                    </div>
+                    <small>Zip must contain a <code>.sql</code> file. YAML schema may be inside the zip
+                        or uploaded separately below.</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="yaml-file">YAML schema file (.yaml / .yml)</label>
+                    <div class="file-input-wrapper" id="yaml-drop-zone">
+                        <input type="file" id="yaml-file" accept=".yaml,.yml" class="hidden-file-input">
+                        <label for="yaml-file" class="file-label">
+                            <span class="upload-icon">📄</span>
+                            <span id="yaml-file-name">Choose .yaml file (optional if inside the zip)</span>
+                        </label>
+                    </div>
+                    <small>Describes tables, primary keys, foreign-key edges, and hierarchy.
+                        See <code>prompts/graph_visualizer/yaml_generation_prompt.txt</code> to generate one.</small>
+                </div>
+
+                <div id="upload-status" class="status-message"></div>
+
+                <button id="upload-btn" class="action-btn">Process & Upload</button>
+            </div>
+        </div>
+
+        <!-- Visualizer Section -->
+        <div id="visualizer-section" class="content-section" style="display: none;">
+            <div class="section-header">
+                <h2>Visualize Connections</h2>
+                <button class="close-btn" onclick="closeSection('visualizer-section')">✕</button>
+            </div>
+
+            <!-- Filter bar -->
+            <div class="filter-bar">
+                <div class="form-group inline">
+                    <label for="dataset-select">Dataset</label>
+                    <select id="dataset-select" class="form-select">
+                        <option value="">-- Select a dataset --</option>
+                    </select>
+                </div>
+                <div class="form-group inline">
+                    <label for="type-select">Connection Type</label>
+                    <select id="type-select" class="form-select">
+                        <option value="">All types</option>
+                    </select>
+                </div>
+                <div class="form-group inline">
+                    <label for="table-select">Table</label>
+                    <select id="table-select" class="form-select">
+                        <option value="">-- Select a table --</option>
+                    </select>
+                </div>
+                <div class="form-group inline grow">
+                    <label for="id-select">Id</label>
+                    <select id="id-select" class="form-select">
+                        <option value="">-- Select a table first --</option>
+                    </select>
+                </div>
+                <div class="form-group inline">
+                    <button id="visualize-btn" class="action-btn" disabled>Get Connected</button>
+                </div>
+            </div>
+
+            <div id="load-status" class="status-message"></div>
+
+            <!-- Main split: graph canvas + side panels -->
+            <div class="visualizer-layout">
+                <!-- Legend -->
+                <div id="legend" class="legend">
+                    <h3>Legend</h3>
+                    <div id="legend-items" class="legend-items">
+                        <div class="legend-empty">Upload a dataset to begin.</div>
+                    </div>
+                </div>
+
+                <!-- Graph canvas -->
+                <div class="canvas-wrap">
+                    <canvas id="graph-canvas"></canvas>
+                    <div id="graph-meta" class="graph-meta"></div>
+                    <div id="canvas-controls" class="canvas-controls">
+                        <button id="zoom-in" title="Zoom in">＋</button>
+                        <button id="zoom-out" title="Zoom out">－</button>
+                        <button id="reset-view" title="Reset view">⟳</button>
+                    </div>
+                </div>
+
+                <!-- Node detail panel -->
+                <div id="node-detail" class="node-detail">
+                    <h3>Node Details</h3>
+                    <div id="detail-content" class="detail-content">
+                        <div class="detail-empty">Click a node to inspect its data.</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Existing Datasets -->
+        <div class="databases-section">
+            <h2>Available Datasets</h2>
+            <div id="dataset-cards" class="db-cards">
+                <div class="loading">Loading datasets...</div>
+            </div>
+        </div>
+    </section>
+
+    <script src="{{ url_for('static', filename='scripts/graph_visualizer.js') }}"></script>
+</body>
+
+</html>

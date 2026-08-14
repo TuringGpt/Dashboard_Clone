@@ -33,6 +33,7 @@ from modules.sop_collection_validator import sop_collection_validator_bp
 from modules.tool_schema_extractor import tool_schema_extractor_bp
 from modules.schema_manager import schema_manager_bp
 from modules.trajectory_viewer import trajectory_viewer_bp
+from modules.graph_visualizer import graph_visualizer_bp
 from modules.health import health_bp
 from modules.databricks import databricks_bp
 ################# END OF BLUEPRINTS #####################
@@ -71,6 +72,7 @@ app.register_blueprint(sop_collection_validator_bp, url_prefix='/clone')
 app.register_blueprint(tool_schema_extractor_bp, url_prefix='/clone')
 app.register_blueprint(schema_manager_bp, url_prefix='/clone')
 app.register_blueprint(trajectory_viewer_bp, url_prefix='/clone')
+app.register_blueprint(graph_visualizer_bp, url_prefix='/clone')
 app.register_blueprint(health_bp, url_prefix='/clone')
 app.register_blueprint(databricks_bp, url_prefix='/clone')
 ####### END OF REGISTER BLUEPRINTS #######
@@ -93,6 +95,7 @@ PUBLIC_ROUTES = {
     '/clone/sop_collection_validator',
     '/clone/tool_schema_extractor',
     '/clone/trajectory_viewer',
+    '/clone/graph_visualizer',
     '/clone/databricks'
 }
 
@@ -107,6 +110,7 @@ REDIRECT_ROUTES = {
     '/clone/sop_validator',
     '/clone/sop_collection_validator',
     '/clone/tool_schema_extractor',
+    '/clone/graph_visualizer',
     '/clone/databricks'
 }
 

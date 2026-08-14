@@ -25,3 +25,4 @@ gunicorn
 # typing-extensions>=4.7.0
 ## ADDED ##
 mysql-connector-python
+PyYAML
