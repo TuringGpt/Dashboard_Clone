@@ -1,0 +1,171 @@
+version: 1
+name: email_calendar
+description: Email + Calendar mock seed (users, messages, threads, events, calendars, attachments)
+
+options:
+  max_field_len: 80
+  # users, labels, and scopes are cross-cutting hubs. Keeping their incoming
+  # edges collapses the whole dataset into a few giant components. Dropping
+  # incoming edges breaks it into semantic subgraphs: each thread + its
+  # messages/parts/attachments, each calendar + its events/attendees.
+  exclude_hubs: [users, labels, scopes]
+  noise_fields:
+    - is_active
+    - is_primary
+    - selected
+    - hidden
+    - deleted
+    - sequence
+    - internal_date_ms
+    - size_estimate
+    - history_id_last
+    - messages_total
+    - threads_total
+    - messages_unread
+    - threads_unread
+    - anyone_can_add_self
+    - attendees_omitted
+    - guestsCanInviteOthers
+    - guestsCanModify
+    - guestsCanSeeOtherGuests
+    - end_time_unspecified
+    - privateCopy
+    - locked
+    - organizer_self
+    - send_notifications
+    - token
+    - static_token
+
+hint_fields:
+  users: email
+  calendars: summary
+  events: summary
+  messages: snippet
+  threads: snippet
+  labels: name
+  email_attachments: filename
+  message_parts: mime_type
+  acls: role
+  scopes: value
+  attendees: displayName
+  calendar_attachments: title
+  message_headers: name
+  message_part_bodies: id
+  message_labels: label_id
+  drafts: id
+
+tables:
+  users:
+    pk: id
+    columns: [id, email, name, timezone, messages_total, threads_total, is_active, provider, token, static_token]
+
+  threads:
+    pk: id
+    columns: [id, user_id, snippet, history_id_last]
+    edges:
+      - {column: user_id, to_table: users, to_pk: id}
+
+  labels:
+    pk: id
+    columns: [id, user_id, name, message_list_visibility, label_list_visibility, type, messages_total, messages_unread, threads_total, threads_unread, color_json]
+    edges:
+      - {column: user_id, to_table: users, to_pk: id}
+
+  messages:
+    pk: id
+    columns: [id, user_id, thread_id, snippet, history_id_last, internal_date_ms, size_estimate]
+    edges:
+      - {column: user_id, to_table: users, to_pk: id}
+      - {column: thread_id, to_table: threads, to_pk: id}
+
+  drafts:
+    pk: id
+    columns: [id, message_id]
+    edges:
+      - {column: message_id, to_table: messages, to_pk: id}
+
+  message_labels:
+    pk: [message_id, label_id]
+    columns: [message_id, label_id]
+    edges:
+      - {column: message_id, to_table: messages, to_pk: id}
+      - {column: label_id, to_table: labels, to_pk: id}
+
+  email_attachments:
+    pk: id
+    columns: [id, message_id, user_id, filename, mime_type, size, part_id, data]
+    edges:
+      - {column: message_id, to_table: messages, to_pk: id}
+      - {column: user_id, to_table: users, to_pk: id}
+
+  message_parts:
+    pk: id
+    columns: [id, message_id, parent_part_id, part_id, mime_type, filename]
+    edges:
+      - {column: message_id, to_table: messages, to_pk: id}
+      - {column: parent_part_id, to_table: message_parts, to_pk: id}
+
+  message_part_bodies:
+    pk: id
+    columns: [id, message_part_id, size, data, attachment_id]
+    edges:
+      - {column: message_part_id, to_table: message_parts, to_pk: id}
+
+  message_headers:
+    pk: id
+    columns: [id, message_part_id, name, value]
+    edges:
+      - {column: message_part_id, to_table: message_parts, to_pk: id}
+
+  calendars:
+    pk: calendar_id
+    columns: [calendar_id, user_id, summary, time_zone, is_primary, selected, hidden, deleted]
+    edges:
+      - {column: user_id, to_table: users, to_pk: id}
+
+  scopes:
+    pk: id
+    columns: [id, type, value]
+
+  acls:
+    pk: id
+    columns: [id, calendar_id, user_id, scope_id, role, send_notifications]
+    edges:
+      - {column: calendar_id, to_table: calendars, to_pk: calendar_id}
+      - {column: user_id, to_table: users, to_pk: id}
+      - {column: scope_id, to_table: scopes, to_pk: id}
+
+  events:
+    pk: event_id
+    columns: [event_id, calendar_id, user_id, organizer_id, organizer_email, organizer_display_name, organizer_self, recurring_event_id, summary, description, location, start_datetime, end_datetime, start_date, end_date, start_timezone, end_timezone, recurrence, status, visibility, color_id, eventType, html_link, anyone_can_add_self, attendees_omitted, guestsCanInviteOthers, guestsCanModify, guestsCanSeeOtherGuests, sequence, source, transparency, iCalUID, privateCopy, locked, hangoutLink, originalStartTime_date, originalStartTime_dateTime, originalStartTime_timeZone, created_at, updated_at]
+    edges:
+      - {column: calendar_id, to_table: calendars, to_pk: calendar_id}
+      - {column: user_id, to_table: users, to_pk: id}
+
+  attendees:
+    pk: attendees_id
+    columns: [attendees_id, comment, displayName, additionalGuests, optional, resource, responseStatus, event_id, user_id]
+    edges:
+      - {column: event_id, to_table: events, to_pk: event_id}
+      - {column: user_id, to_table: users, to_pk: id}
+
+  calendar_attachments:
+    pk: attachment_id
+    columns: [attachment_id, event_id, file_url, mime_type, file_id, title, icon_link]
+    edges:
+      - {column: event_id, to_table: events, to_pk: event_id}
+
+hierarchy:
+  - {parent: users, child: threads, fk: user_id}
+  - {parent: users, child: labels, fk: user_id}
+  - {parent: users, child: calendars, fk: user_id}
+  - {parent: threads, child: messages, fk: thread_id}
+  - {parent: messages, child: drafts, fk: message_id}
+  - {parent: messages, child: message_parts, fk: message_id}
+  - {parent: message_parts, child: message_part_bodies, fk: message_part_id}
+  - {parent: message_parts, child: message_headers, fk: message_part_id}
+  - {parent: message_parts, child: message_parts, fk: parent_part_id}
+  - {parent: calendars, child: events, fk: calendar_id}
+  - {parent: calendars, child: acls, fk: calendar_id}
+  - {parent: events, child: attendees, fk: event_id}
+  - {parent: events, child: calendar_attachments, fk: event_id}

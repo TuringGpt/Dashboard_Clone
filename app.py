@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 """ Flask Application """
 import os
-import redis
 import requests
 import json
 # Third-party libraries
@@ -33,6 +32,7 @@ from modules.sop_collection_validator import sop_collection_validator_bp
 from modules.tool_schema_extractor import tool_schema_extractor_bp
 from modules.schema_manager import schema_manager_bp
 from modules.trajectory_viewer import trajectory_viewer_bp
+from modules.graph_visualizer import graph_visualizer_bp
 from modules.health import health_bp
 from modules.databricks import databricks_bp
 ################# END OF BLUEPRINTS #####################
@@ -60,6 +60,12 @@ app.config['SESSION_TYPE'] = 'filesystem'
 # app.config['SESSION_REDIS'] = redis.from_url(os.environ.get('REDIS_URL'))
 Session(app)
 
+# Disable static-file caching in dev so the browser always fetches fresh
+# JS/CSS after edits (Flask otherwise caches static files for 12h, leaving
+# the browser running stale code). Production keeps the long cache.
+if os.environ.get('FLASK_ENV') != 'production':
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
+
 ########### REGISTER BLUEPRINTS ###########
 app.register_blueprint(db_utilities_bp, url_prefix='/clone')
 app.register_blueprint(task_tracker_bp, url_prefix='/clone')
@@ -71,6 +77,7 @@ app.register_blueprint(sop_collection_validator_bp, url_prefix='/clone')
 app.register_blueprint(tool_schema_extractor_bp, url_prefix='/clone')
 app.register_blueprint(schema_manager_bp, url_prefix='/clone')
 app.register_blueprint(trajectory_viewer_bp, url_prefix='/clone')
+app.register_blueprint(graph_visualizer_bp, url_prefix='/clone')
 app.register_blueprint(health_bp, url_prefix='/clone')
 app.register_blueprint(databricks_bp, url_prefix='/clone')
 ####### END OF REGISTER BLUEPRINTS #######
@@ -93,6 +100,7 @@ PUBLIC_ROUTES = {
     '/clone/sop_collection_validator',
     '/clone/tool_schema_extractor',
     '/clone/trajectory_viewer',
+    '/clone/graph_visualizer',
     '/clone/databricks'
 }
 
@@ -107,6 +115,7 @@ REDIRECT_ROUTES = {
     '/clone/sop_validator',
     '/clone/sop_collection_validator',
     '/clone/tool_schema_extractor',
+    '/clone/graph_visualizer',
     '/clone/databricks'
 }
 
@@ -299,4 +308,11 @@ if __name__ == "__main__":
     """ Main Function """
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') != 'production'
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    # Disable the Werkzeug reloader. This app imports heavy deps (openai, anthropic,
+    # google-api, mysql.connector) so a cold worker restart takes ~30s; the reloader
+    # restarting the worker mid-request drops in-flight connections (surfaces in the
+    # browser as "Failed to fetch"). With the reloader off the slow import happens
+    # once at startup and the server stays stable. Edit-and-reload is still possible
+    # by manually restarting. Production (FLASK_ENV=production) already runs without
+    # the reloader. Keep debug=True for the interactive debugger/error pages.
+    app.run(host='0.0.0.0', port=port, debug=debug, use_reloader=False, threaded=True)

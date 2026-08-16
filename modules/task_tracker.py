@@ -1,11 +1,9 @@
 ############# TASK TRACKER LOGIC ####################
-import gspread
 import threading
 import base64
 import os
 import json
 from flask import Blueprint, render_template, request, jsonify
-from oauth2client.service_account import ServiceAccountCredentials
 
 task_tracker_bp = Blueprint('task_tracker', __name__)
 
@@ -13,6 +11,8 @@ task_tracker_bp = Blueprint('task_tracker', __name__)
 # Your Google Sheets functions
 def connect_to_sheets():
     """Connect to Google Sheets with credentials"""
+    import gspread
+    from oauth2client.service_account import ServiceAccountCredentials
     scope = ["https://spreadsheets.google.com/feeds", "https://www.googleapis.com/auth/drive"]
     encoded = os.environ.get("CREDENTIAL_JSON_BASE64")
 

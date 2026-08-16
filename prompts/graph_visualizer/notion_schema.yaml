@@ -1,0 +1,248 @@
+version: 1
+name: notion_workspace
+description: Notion MCP mock workspace seed (workspaces, users, pages, databases, property values, discussions)
+
+options:
+  max_field_len: 80
+  # Cross-cutting hub tables. Keeping their incoming edges collapses the
+  # dataset into one giant component. Dropping incoming edges to these breaks
+  # it into semantic subgraphs (each page + its property values / comments /
+  # discussions becomes its own graph).
+  #   workspaces            - tenant ownership (cross-cutting)
+  #   users                - created_by / assignee ownership (cross-cutting)
+  #   select_options       - shared enum options across property values
+  # data_source_properties is kept connected so property values link to their
+  # property definitions (richer, fewer separate entities).
+  exclude_hubs: [workspaces, users, select_options]
+
+tables:
+  workspaces:
+    pk: id
+    columns: [id, name, created_at, updated_at]
+
+  users:
+    pk: id
+    columns: [id, workspace_id, type, name, email, created_at, updated_at]
+    edges:
+      - {column: workspace_id, to_table: workspaces, to_pk: id}
+
+  teams:
+    pk: id
+    columns: [id, workspace_id, type, name, in_trash, created_at, updated_at]
+    edges:
+      - {column: workspace_id, to_table: workspaces, to_pk: id}
+
+  team_memberships:
+    pk: [team_id, user_id]
+    columns: [team_id, user_id, role]
+    edges:
+      - {column: team_id, to_table: teams, to_pk: id}
+      - {column: user_id, to_table: users, to_pk: id}
+
+  pages:
+    pk: id
+    columns: [id, workspace_id, parent_type, parent_id, title, url, icon, cover, content, template_id, is_skill, verification_status, verification_expires_at, is_archived, in_trash, duplicated_from, created_by, created_at, updated_at]
+    edges:
+      - {column: workspace_id, to_table: workspaces, to_pk: id}
+      # parent_id is polymorphic (workspace/page/database); only treat as a pages self-ref
+      # when the target page actually exists.
+      - {column: parent_id, to_table: pages, to_pk: id, conditional: true}
+      - {column: template_id, to_table: pages, to_pk: id, conditional: true}
+      - {column: duplicated_from, to_table: pages, to_pk: id, conditional: true}
+      - {column: created_by, to_table: users, to_pk: id, conditional: true}
+
+  databases:
+    pk: id
+    columns: [id, workspace_id, parent_page_id, title, description, url, database_type, is_inline, in_trash, created_by, created_at, updated_at]
+    edges:
+      - {column: workspace_id, to_table: workspaces, to_pk: id}
+      - {column: parent_page_id, to_table: pages, to_pk: id}
+      - {column: created_by, to_table: users, to_pk: id, conditional: true}
+
+  data_sources:
+    pk: id
+    columns: [id, database_id, title, description, url, schema_ddl, in_trash, created_at, updated_at]
+    edges:
+      - {column: database_id, to_table: databases, to_pk: id}
+
+  data_source_properties:
+    pk: id
+    columns: [id, data_source_id, name, property_type, is_title, position, created_at, updated_at]
+    edges:
+      - {column: data_source_id, to_table: data_sources, to_pk: id}
+
+  select_options:
+    pk: id
+    columns: [id, data_source_property_id, name, color]
+    edges:
+      - {column: data_source_property_id, to_table: data_source_properties, to_pk: id}
+
+  page_templates:
+    pk: [page_id, data_source_id]
+    columns: [page_id, data_source_id, name]
+    edges:
+      - {column: page_id, to_table: pages, to_pk: id}
+      - {column: data_source_id, to_table: data_sources, to_pk: id}
+
+  property_values:
+    pk: id
+    columns: [id, page_id, property_id, wire_property_id, type, checkbox_value, number_value, email_value, phone_number_value, url_value, created_time, last_edited_time, created_by_user_id, last_edited_by_user_id, unique_id_number, unique_id_prefix, date_start, date_end, date_time_zone, select_option_id, status_option_id, formula_result_type, formula_boolean, formula_number, formula_string, rollup_result_type, rollup_function, rollup_number, rollup_array_json, verification_state, verification_verified_by_user_id, verification_date_start, verification_date_end, relation_has_more, created_at, updated_at]
+    edges:
+      - {column: page_id, to_table: pages, to_pk: id}
+      - {column: property_id, to_table: data_source_properties, to_pk: id}
+      - {column: wire_property_id, to_table: data_source_properties, to_pk: id, conditional: true}
+      - {column: created_by_user_id, to_table: users, to_pk: id, conditional: true}
+      - {column: last_edited_by_user_id, to_table: users, to_pk: id, conditional: true}
+      - {column: select_option_id, to_table: select_options, to_pk: id, conditional: true}
+      - {column: status_option_id, to_table: select_options, to_pk: id, conditional: true}
+      - {column: verification_verified_by_user_id, to_table: users, to_pk: id, conditional: true}
+
+  property_value_multi_select:
+    pk: [property_value_id, option_id]
+    columns: [property_value_id, option_id, ordinal]
+    edges:
+      - {column: property_value_id, to_table: property_values, to_pk: id}
+      - {column: option_id, to_table: select_options, to_pk: id}
+
+  property_value_people:
+    pk: [property_value_id, user_id]
+    columns: [property_value_id, user_id, ordinal]
+    edges:
+      - {column: property_value_id, to_table: property_values, to_pk: id}
+      - {column: user_id, to_table: users, to_pk: id}
+
+  property_value_relation:
+    pk: [property_value_id, related_page_id]
+    columns: [property_value_id, related_page_id, ordinal]
+    edges:
+      - {column: property_value_id, to_table: property_values, to_pk: id}
+      - {column: related_page_id, to_table: pages, to_pk: id, conditional: true}
+
+  property_value_files:
+    pk: id
+    columns: [id, property_value_id, ordinal, name, kind, external_url, notion_file_url, notion_file_expiry_time, file_upload_id]
+    edges:
+      - {column: property_value_id, to_table: property_values, to_pk: id}
+
+  rich_text_spans:
+    pk: id
+    columns: [id, property_value_id, ordinal, span_type, plain_text, href, annotation_bold, annotation_italic, annotation_strikethrough, annotation_underline, annotation_code, annotation_color, text_content, text_link_url, equation_expression, mention_subject_type, mention_user_id, mention_page_id, mention_database_id, mention_date_start, mention_date_end, mention_link_preview_url, mention_template_kind, mention_template_keyword]
+    edges:
+      - {column: property_value_id, to_table: property_values, to_pk: id}
+      - {column: mention_user_id, to_table: users, to_pk: id, conditional: true}
+      - {column: mention_page_id, to_table: pages, to_pk: id, conditional: true}
+      - {column: mention_database_id, to_table: databases, to_pk: id, conditional: true}
+
+  views:
+    pk: id
+    columns: [id, data_source_id, database_id, parent_page_id, name, type, configure, url, created_at, updated_at]
+    edges:
+      - {column: data_source_id, to_table: data_sources, to_pk: id}
+      - {column: database_id, to_table: databases, to_pk: id}
+      - {column: parent_page_id, to_table: pages, to_pk: id, conditional: true}
+
+  discussions:
+    pk: id
+    columns: [id, page_id, block_id, selection_with_ellipsis, resolved, created_at, updated_at]
+    edges:
+      - {column: page_id, to_table: pages, to_pk: id}
+
+  comments:
+    pk: id
+    columns: [id, discussion_id, page_id, author_id, text, created_at, updated_at]
+    edges:
+      - {column: discussion_id, to_table: discussions, to_pk: id}
+      - {column: page_id, to_table: pages, to_pk: id}
+      - {column: author_id, to_table: users, to_pk: id, conditional: true}
+
+  attachments:
+    pk: id
+    columns: [id, workspace_id, filename, content_type, content_length, content, source_url, source_file_id, status, markdown_source, suggested_markdown, created_by, created_at]
+    edges:
+      - {column: workspace_id, to_table: workspaces, to_pk: id}
+      - {column: created_by, to_table: users, to_pk: id, conditional: true}
+
+  page_attachments:
+    pk: [page_id, attachment_id]
+    columns: [page_id, attachment_id]
+    edges:
+      - {column: page_id, to_table: pages, to_pk: id}
+      - {column: attachment_id, to_table: attachments, to_pk: id}
+
+  async_tasks:
+    pk: id
+    columns: [id, workspace_id, object, status, status_url, operation_surface, operation_name, result_json, error_json, request_id, created_at, updated_at]
+    edges:
+      - {column: workspace_id, to_table: workspaces, to_pk: id}
+
+  async_task_pages:
+    pk: [task_id, page_id]
+    columns: [task_id, page_id, url]
+    edges:
+      - {column: task_id, to_table: async_tasks, to_pk: id}
+      - {column: page_id, to_table: pages, to_pk: id}
+
+  tool_access:
+    pk: [workspace_id, tool_name]
+    columns: [workspace_id, tool_name, status, upgrade_url]
+    edges:
+      - {column: workspace_id, to_table: workspaces, to_pk: id}
+
+# Containment hierarchy: parent owns child via the child's FK column (single-parent tree).
+hierarchy:
+  - {parent: teams, child: team_memberships, fk: team_id}
+  - {parent: pages, child: pages, fk: parent_id}
+  - {parent: pages, child: databases, fk: parent_page_id}
+  - {parent: databases, child: data_sources, fk: database_id}
+  - {parent: data_sources, child: data_source_properties, fk: data_source_id}
+  - {parent: data_source_properties, child: select_options, fk: data_source_property_id}
+  - {parent: data_sources, child: views, fk: data_source_id}
+  - {parent: pages, child: property_values, fk: page_id}
+  - {parent: property_values, child: property_value_files, fk: property_value_id}
+  - {parent: property_values, child: rich_text_spans, fk: property_value_id}
+  - {parent: pages, child: discussions, fk: page_id}
+  - {parent: discussions, child: comments, fk: discussion_id}
+  - {parent: pages, child: page_attachments, fk: page_id}
+  - {parent: attachments, child: page_attachments, fk: attachment_id}
+  - {parent: async_tasks, child: async_task_pages, fk: task_id}
+  - {parent: pages, child: async_task_pages, fk: page_id}
+
+# Reference FKs: not nested; a readable hint field is added to the node instead.
+references:
+  - {column: user_id, to_table: users, hint: user_email}
+  - {column: created_by, to_table: users, hint: created_by_email}
+  - {column: author_id, to_table: users, hint: author_email}
+  - {column: created_by_user_id, to_table: users, hint: created_by_email}
+  - {column: last_edited_by_user_id, to_table: users, hint: last_edited_by_email}
+  - {column: verification_verified_by_user_id, to_table: users, hint: verified_by_email}
+  - {column: mention_user_id, to_table: users, hint: mention_user_email}
+  - {column: property_id, to_table: data_source_properties, hint: property_name}
+  - {column: data_source_id, to_table: data_sources, hint: data_source_title}
+  - {column: database_id, to_table: databases, hint: database_title}
+  - {column: parent_page_id, to_table: pages, hint: parent_page_title}
+  - {column: discussion_id, to_table: discussions, hint: discussion_id}
+  - {column: option_id, to_table: select_options, hint: option_name}
+
+# Most human-readable label column per table (used for node tooltips / labels).
+hint_fields:
+  workspaces: name
+  users: email
+  teams: name
+  pages: title
+  databases: title
+  data_sources: title
+  data_source_properties: name
+  select_options: name
+  # property_values.type is just "status"/"people"/"select" (non-unique); the id
+  # (e.g. depv-tasks-status-62bcacf5dd) encodes the table+property and is far more
+  # descriptive, so use id as the label.
+  property_values: id
+  attachments: filename
+  views: name
+  # async_tasks.operation_name is always "create_pages" (non-unique); the id
+  # (task-async-001) is unique and descriptive.
+  async_tasks: id
+  # discussions / comments / rich_text_spans have no human-readable column; use id.
+  discussions: id
+  comments: text
+  rich_text_spans: id

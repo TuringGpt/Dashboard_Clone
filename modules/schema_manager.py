@@ -4,8 +4,6 @@ import zipfile
 import tempfile
 from flask import Blueprint, render_template, request, jsonify
 from datetime import datetime
-import mysql.connector
-from mysql.connector import Error
 
 schema_manager_bp = Blueprint('schema_manager', __name__)
 
