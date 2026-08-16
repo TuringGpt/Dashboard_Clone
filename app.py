@@ -1,9 +1,8 @@
 #!/usr/bin/python3
 """ Flask Application """
 import os
-import redis
 import requests
-import json 
+import json
 # Third-party libraries
 from flask_cors import CORS
 from datetime import timedelta, datetime
@@ -60,6 +59,12 @@ app.config['SESSION_TYPE'] = 'filesystem'
 # app.config['SESSION_TYPE'] = 'redis'
 # app.config['SESSION_REDIS'] = redis.from_url(os.environ.get('REDIS_URL'))
 Session(app)
+
+# Disable static-file caching in dev so the browser always fetches fresh
+# JS/CSS after edits (Flask otherwise caches static files for 12h, leaving
+# the browser running stale code). Production keeps the long cache.
+if os.environ.get('FLASK_ENV') != 'production':
+    app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 
 ########### REGISTER BLUEPRINTS ###########
 app.register_blueprint(db_utilities_bp, url_prefix='/clone')
@@ -303,4 +308,11 @@ if __name__ == "__main__":
     """ Main Function """
     port = int(os.environ.get('PORT', 5000))
     debug = os.environ.get('FLASK_ENV') != 'production'
-    app.run(host='0.0.0.0', port=port, debug=debug)
+    # Disable the Werkzeug reloader. This app imports heavy deps (openai, anthropic,
+    # google-api, mysql.connector) so a cold worker restart takes ~30s; the reloader
+    # restarting the worker mid-request drops in-flight connections (surfaces in the
+    # browser as "Failed to fetch"). With the reloader off the slow import happens
+    # once at startup and the server stays stable. Edit-and-reload is still possible
+    # by manually restarting. Production (FLASK_ENV=production) already runs without
+    # the reloader. Keep debug=True for the interactive debugger/error pages.
+    app.run(host='0.0.0.0', port=port, debug=debug, use_reloader=False, threaded=True)

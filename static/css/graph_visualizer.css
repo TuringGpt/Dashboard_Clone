@@ -171,6 +171,16 @@ body {
     color: rgba(255, 255, 255, 0.8);
 }
 
+.filter-count {
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.4);
+}
+
+.filter-count.filter-active {
+    color: #fbbf24;
+}
+
 .form-group small {
     display: block;
     margin-top: 0.4rem;
@@ -217,6 +227,73 @@ body {
 .form-select option {
     background: #1a1a1a;
     color: white;
+}
+
+/* Searchable combobox (id input + dropdown) */
+.combo-wrapper {
+    position: relative;
+}
+
+.combo-input {
+    width: 100%;
+}
+
+.combo-dropdown {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    max-height: 300px;
+    overflow-y: auto;
+    background: #1a1a1a;
+    border: 1px solid rgba(102, 126, 234, 0.4);
+    border-top: none;
+    border-radius: 0 0 8px 8px;
+    z-index: 200;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.combo-dropdown.open {
+    display: block;
+}
+
+.combo-item {
+    padding: 0.5rem 0.85rem;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.9);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    transition: background 0.1s;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.combo-item:hover,
+.combo-item.highlighted {
+    background: rgba(102, 126, 234, 0.3);
+}
+
+.combo-item .combo-label {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.combo-item .combo-meta {
+    color: rgba(255, 255, 255, 0.45);
+    font-size: 0.78rem;
+}
+
+.combo-item .combo-table {
+    color: rgba(102, 126, 234, 0.95);
+    font-weight: 600;
+}
+
+.combo-empty {
+    padding: 1rem;
+    text-align: center;
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.85rem;
 }
 
 /* File inputs */
@@ -282,6 +359,34 @@ body {
 .action-btn:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+}
+
+.lock-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    background: rgba(255, 255, 255, 0.07);
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: all 0.2s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+}
+
+.lock-btn:hover {
+    background: rgba(102, 126, 234, 0.3);
+}
+
+.lock-btn.active {
+    background: rgba(251, 191, 36, 0.35);
+    border-color: rgba(251, 191, 36, 0.6);
+}
+
+.lock-btn .lock-icon {
+    line-height: 1;
 }
 
 /* Status messages */
@@ -492,6 +597,26 @@ body {
     gap: 0.35rem;
 }
 
+.detail-toggle {
+    margin-top: 0.6rem;
+    font-size: 0.78rem;
+    color: #9db4ff;
+    cursor: pointer;
+    user-select: none;
+    padding: 0.3rem 0.4rem;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+
+.detail-toggle:hover {
+    background: rgba(102, 126, 234, 0.15);
+}
+
+.detail-fields-extra {
+    margin-top: 0.4rem;
+    opacity: 0.7;
+}
+
 .detail-field {
     display: grid;
     grid-template-columns: 110px 1fr;
@@ -510,6 +635,16 @@ body {
 .detail-field .v {
     color: rgba(255, 255, 255, 0.9);
     word-break: break-word;
+}
+
+.detail-field-id .k {
+    color: rgba(102, 126, 234, 0.95);
+    font-weight: 700;
+}
+
+.detail-field-id .v {
+    color: rgba(255, 255, 255, 1);
+    font-weight: 600;
 }
 
 .detail-connections {
@@ -602,6 +737,14 @@ body {
     background: rgba(102, 126, 234, 0.4);
 }
 
+.db-card .mini-btn.danger {
+    border-color: rgba(220, 60, 60, 0.4);
+}
+
+.db-card .mini-btn.danger:hover {
+    background: rgba(220, 60, 60, 0.45);
+}
+
 .loading {
     color: rgba(255, 255, 255, 0.5);
     padding: 1rem;
@@ -616,4 +759,246 @@ body {
     .canvas-wrap {
         height: 55vh;
     }
+}
+
+/* Center the upload (dataset creation) form */
+.form-container {
+    margin: 0 auto;
+}
+
+/* YAML prompt popup button + row */
+.yaml-hint-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+}
+
+.prompt-btn {
+    background: rgba(102, 126, 234, 0.18);
+    border: 1px solid rgba(102, 126, 234, 0.4);
+    color: #c7d2fe;
+    padding: 0.3rem 0.7rem;
+    border-radius: 8px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+
+.prompt-btn:hover {
+    background: rgba(102, 126, 234, 0.35);
+    color: #fff;
+}
+
+/* YAML prompt modal */
+.prompt-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.prompt-modal-card {
+    background: #1a1b2e;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 820px;
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.prompt-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 1rem 1.4rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.prompt-modal-header h3 {
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.prompt-modal-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.prompt-copy-btn {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.4rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.prompt-copy-btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.35);
+}
+
+.prompt-modal-sub {
+    padding: 0.6rem 1.4rem 0;
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.prompt-modal-body {
+    flex: 1;
+    overflow: auto;
+    margin: 0.6rem 1.4rem 1.4rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 10px;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.85);
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
+}
+
+/* Label field hint (shows which field is used as the node name) */
+.label-field-hint {
+    display: inline-block;
+    margin-left: 0.5rem;
+    padding: 0.1rem 0.45rem;
+    font-size: 0.65rem;
+    font-weight: 600;
+    color: #c4b5fd;
+    background: rgba(139, 92, 246, 0.18);
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    border-radius: 6px;
+    vertical-align: middle;
+}
+
+.field-badge {
+    display: inline-block;
+    margin-left: 0.3rem;
+    padding: 0.05rem 0.35rem;
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: #c4b5fd;
+    background: rgba(139, 92, 246, 0.18);
+    border-radius: 4px;
+    vertical-align: middle;
+}
+
+.detail-field-label .v {
+    color: #c4b5fd;
+    font-weight: 600;
+}
+
+/* Truncated field value — clickable */
+.detail-field-truncated {
+    cursor: pointer;
+    border-bottom: 1px dashed rgba(102, 126, 234, 0.5);
+    transition: color 0.15s;
+}
+
+.detail-field-truncated:hover {
+    color: #a5b4fc;
+}
+
+/* Full-value popup (click truncated field) */
+.field-popup {
+    position: fixed;
+    inset: 0;
+    z-index: 1100;
+    background: rgba(0, 0, 0, 0.65);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.5rem;
+}
+
+.field-popup-card {
+    background: #1a1b2e;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 14px;
+    width: 100%;
+    max-width: 780px;
+    max-height: 86vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.field-popup-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.8rem 1.2rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.field-popup-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.field-popup-copy {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 0.35rem 0.9rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.field-popup-copy:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.35);
+}
+
+.field-popup-close {
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 0.85rem;
+}
+
+.field-popup-close:hover {
+    background: rgba(255, 80, 80, 0.5);
+}
+
+.field-popup-body {
+    max-width: 720px;
+    max-height: 65vh;
+    overflow: auto;
+    margin: 0.8rem 1.2rem 1.2rem;
+    padding: 1rem;
+    background: rgba(0, 0, 0, 0.4);
+    border-radius: 10px;
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: rgba(255, 255, 255, 0.88);
+    white-space: pre-wrap;
+    word-break: break-word;
+    font-family: "SF Mono", "Cascadia Code", Consolas, monospace;
 }

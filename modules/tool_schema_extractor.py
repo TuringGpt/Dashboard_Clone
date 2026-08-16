@@ -1,6 +1,5 @@
 import os
 from flask import Blueprint, render_template, request, jsonify
-from openai import OpenAI
 
 tool_schema_extractor_bp = Blueprint('tool_schema_extractor', __name__)
 
@@ -45,6 +44,9 @@ def tool_schema_extractor():
             
             # Call OpenAI API
             try:
+                # Lazy import: openai is slow to import (>10s) and would block app
+                # startup if imported at module top.
+                from openai import OpenAI
                 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
                 
                 response = client.chat.completions.create(

@@ -4,11 +4,16 @@ description: Notion MCP mock workspace seed (workspaces, users, pages, databases
 
 options:
   max_field_len: 80
-  # workspaces is referenced by ~8 tables; keeping its incoming edges would collapse
-  # the entire dataset into one giant component. Drop incoming edges to workspaces so
-  # the rest of the graph forms meaningful per-entity subgraphs (workspaces rows stay
-  # as standalone size-1 nodes).
-  exclude_hubs: [workspaces]
+  # Cross-cutting hub tables. Keeping their incoming edges collapses the
+  # dataset into one giant component. Dropping incoming edges to these breaks
+  # it into semantic subgraphs (each page + its property values / comments /
+  # discussions becomes its own graph).
+  #   workspaces            - tenant ownership (cross-cutting)
+  #   users                - created_by / assignee ownership (cross-cutting)
+  #   select_options       - shared enum options across property values
+  # data_source_properties is kept connected so property values link to their
+  # property definitions (richer, fewer separate entities).
+  exclude_hubs: [workspaces, users, select_options]
 
 tables:
   workspaces:
@@ -228,9 +233,16 @@ hint_fields:
   data_sources: title
   data_source_properties: name
   select_options: name
-  property_values: type
+  # property_values.type is just "status"/"people"/"select" (non-unique); the id
+  # (e.g. depv-tasks-status-62bcacf5dd) encodes the table+property and is far more
+  # descriptive, so use id as the label.
+  property_values: id
   attachments: filename
   views: name
+  # async_tasks.operation_name is always "create_pages" (non-unique); the id
+  # (task-async-001) is unique and descriptive.
+  async_tasks: id
+  # discussions / comments / rich_text_spans have no human-readable column; use id.
   discussions: id
   comments: text
-  async_tasks: operation_name
+  rich_text_spans: id

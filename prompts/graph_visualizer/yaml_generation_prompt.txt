@@ -26,9 +26,7 @@ You will receive the database schema. It may be provided as:
 Use whatever form is given. When only INSERT statements are available, infer the
 primary key and foreign keys from naming conventions and the data values.
 
-Schema to analyse:
 
-{schema}
 
 ==============================================================================
 YAML STRUCTURE YOU MUST PRODUCE
@@ -45,6 +43,10 @@ Top-level keys (all optional unless marked required):
     exclude_hubs: []                # list of table names whose INCOMING edges are dropped
                                     # for connectivity (breaks giant hub-anchored components;
                                     # the hub rows themselves remain as standalone size-1 nodes)
+    noise_fields: []                # list of column names to hide in the node detail panel
+                                    # by default (bookkeeping columns like created_at,
+                                    # updated_at, position). The visualizer already hides a
+                                    # built-in set; entries here are ADDED to that set.
 
   tables:                          # required. One entry per table that appears in the seed.
     <table_name>:
@@ -57,8 +59,13 @@ Top-level keys (all optional unless marked required):
           conditional: false         #     optional, default false. true = only follow the
                                     #     edge when the target id is a real row (avoids
                                     #     phantom nodes for dangling/optional references).
-      email_join: <column>          #   optional. A column whose VALUE is an email that may
-                                    # match users.email (a non-FK join, conditional).
+      email_join:                    #   optional. A non-FK value-based join: a column whose
+                                    # value matches a column on ANOTHER table (e.g. an email
+                                    # column matching accounts.email). Fully generic — do NOT
+                                    # assume the target is users/email; specify both.
+        column: <source_col>         #     the column on THIS row holding the join value
+        target_table: <table>        #     the table to match against
+        target_column: <column>      #     the column on target_table whose value must match
 
   hierarchy:                       # optional. Containment edges for the nested tree.
                                     # parent_table contains child_table via the child FK col.
@@ -95,11 +102,25 @@ RULES FOR INFERENCE
    - Do NOT add edges for pure value columns (amounts, counts, timestamps, colours).
    - Self-references (e.g. pages.parent_id -> pages.id) are valid; mark conditional.
 
-3. Hubs:
-   - If one table is referenced by many others and would collapse the whole dataset into
-     a single giant component, list it under options.exclude_hubs so the visualizer
-     breaks the mega-component into meaningful per-entity subgraphs. Common hubs:
-     workspaces, tenants, accounts. Keep the table's own rows; only drop INCOMING edges.
+3. Hubs — ALWAYS break mega-components semantically:
+   - If one table is referenced by many others and would collapse the whole dataset
+     into a single giant component, list it under options.exclude_hubs so the
+     visualizer breaks the mega-component into meaningful per-entity subgraphs.
+     The hub's own rows stay as standalone size-1 nodes; only INCOMING edges are
+     dropped. ALWAYS check for and exclude ALL of these hub categories:
+     a. Ownership / tenant hubs: workspaces, tenants, accounts, organizations
+        (cross-cutting ownership, not structural containment).
+     b. User / actor hubs: users, people, members (created_by, assignee, author
+        connect everything to a shared user).
+     c. Shared-definition hubs: property definitions, enum options, labels, tags,
+        categories (the same definition is reused across many entities, chaining
+        them through a shared reference).
+     d. Self-reference chains: if a table has a parent_id self-reference that chains
+        many rows into one tree, consider whether that chain is the meaningful unit
+        or whether each row should be its own subgraph.
+   - A good rule: after listing the hubs, the LARGEST connected component should be
+     under ~300 nodes. If it is still huge, you missed a hub — re-check incoming
+     edge counts per table and exclude the next biggest hub.
 
 4. Hierarchy:
    - Pick the single strongest "owns/contains" relationship for each child table.
@@ -110,6 +131,10 @@ RULES FOR INFERENCE
 
 5. Hint fields:
    - Pick the most human-readable column of each table (title, name, email, summary).
+   - The hint value MUST be unique per row. If a column has the same value for many
+     rows (e.g. async_tasks.operation_name is always "create_pages"), do NOT use it
+     as the hint — use the primary key instead, which is always unique and often
+     descriptive (e.g. task-async-001, depv-tasks-status-62bcacf5dd).
 
 ==============================================================================
 WORKED EXAMPLE (abbreviated, for tone only)
@@ -165,3 +190,7 @@ Produce the COMPLETE YAML for the schema given above under "Schema to analyse".
 Include every table. Emit valid YAML only. Wrap the whole document in one yaml fenced
 block. Use the block style shown in the worked example for edges, hierarchy, and
 references (do not use inline flow braces for those entries).
+
+Schema to analyse:
+
+{schema}

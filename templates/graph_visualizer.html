@@ -24,8 +24,8 @@
             <h1>Graph Visualizer</h1>
             <p class="header-description">
                 Upload a zipped seed <code>.sql</code> file plus a <code>.yaml</code> schema that
-                declares the tables, foreign-key connections, and hierarchy. Pick a table, an id,
-                and (optionally) a connection type to see everything connected to that id as a
+                declares the tables, foreign-key connections, and hierarchy. Pick a table and an id,
+                then click <strong>Connect</strong> to see everything connected to that id as a
                 colour-coded graph.
             </p>
         </div>
@@ -80,8 +80,12 @@
                             <span id="yaml-file-name">Choose .yaml file (optional if inside the zip)</span>
                         </label>
                     </div>
-                    <small>Describes tables, primary keys, foreign-key edges, and hierarchy.
-                        See <code>prompts/graph_visualizer/yaml_generation_prompt.txt</code> to generate one.</small>
+                    <div class="yaml-hint-row">
+                        <small>Describes tables, primary keys, foreign-key edges, and hierarchy.</small>
+                        <button type="button" id="show-yaml-prompt" class="prompt-btn" title="Show the YAML generation prompt to copy">
+                            📋 YAML prompt
+                        </button>
+                    </div>
                 </div>
 
                 <div id="upload-status" class="status-message"></div>
@@ -106,25 +110,28 @@
                     </select>
                 </div>
                 <div class="form-group inline">
-                    <label for="type-select">Connection Type</label>
-                    <select id="type-select" class="form-select">
-                        <option value="">All types</option>
+                    <label for="flow-select">Connection flow <span id="flow-count" class="filter-count"></span></label>
+                    <select id="flow-select" class="form-select">
+                        <option value="">All flows</option>
                     </select>
                 </div>
                 <div class="form-group inline">
-                    <label for="table-select">Table</label>
+                    <label for="table-select">Table <span id="table-count" class="filter-count"></span></label>
                     <select id="table-select" class="form-select">
                         <option value="">-- Select a table --</option>
                     </select>
                 </div>
                 <div class="form-group inline grow">
-                    <label for="id-select">Id</label>
-                    <select id="id-select" class="form-select">
-                        <option value="">-- Select a table first --</option>
-                    </select>
+                    <label for="id-input">Search id <span id="id-count" class="filter-count"></span></label>
+                    <div class="combo-wrapper" id="id-combo">
+                        <input type="text" id="id-input" class="form-input combo-input"
+                               placeholder="Select a table first..." autocomplete="off">
+                        <input type="hidden" id="id-value" value="">
+                        <div class="combo-dropdown" id="id-dropdown"></div>
+                    </div>
                 </div>
                 <div class="form-group inline">
-                    <button id="visualize-btn" class="action-btn" disabled>Get Connected</button>
+                    <button id="visualize-btn" class="action-btn" disabled title="Pick a dataset, table, and id from the dropdowns first">Connect</button>
                 </div>
             </div>
 
@@ -145,6 +152,14 @@
                     <canvas id="graph-canvas"></canvas>
                     <div id="graph-meta" class="graph-meta"></div>
                     <div id="canvas-controls" class="canvas-controls">
+                        <button id="lock-toggle" class="lock-btn" title="Lock OFF: show the full connected component">
+                            <span class="lock-icon">🔓</span>
+                        </button>
+                        <!-- Deep lock (recursive, all descendants to leaves) — disabled for now
+                        <button id="lock-deep" class="lock-btn" title="Deep lock OFF: show full component">
+                            <span class="lock-icon">🌳</span>
+                        </button>
+                        -->
                         <button id="zoom-in" title="Zoom in">＋</button>
                         <button id="zoom-out" title="Zoom out">－</button>
                         <button id="reset-view" title="Reset view">⟳</button>
@@ -169,6 +184,21 @@
             </div>
         </div>
     </section>
+
+    <!-- YAML prompt popup modal -->
+    <div id="yaml-prompt-modal" class="prompt-modal" style="display: none;">
+        <div class="prompt-modal-card">
+            <div class="prompt-modal-header">
+                <h3>YAML Schema Generation Prompt</h3>
+                <div class="prompt-modal-actions">
+                    <button type="button" id="copy-yaml-prompt" class="prompt-copy-btn">Copy</button>
+                    <button type="button" class="close-btn" onclick="document.getElementById('yaml-prompt-modal').style.display='none'">✕</button>
+                </div>
+            </div>
+            <p class="prompt-modal-sub">Paste this into an LLM along with your <code>schema</code> file to generate a matching YAML schema.</p>
+            <pre id="yaml-prompt-body" class="prompt-modal-body">Loading...</pre>
+        </div>
+    </div>
 
     <script src="{{ url_for('static', filename='scripts/graph_visualizer.js') }}"></script>
 </body>

@@ -1,6 +1,5 @@
 import os
 from flask import Blueprint, render_template, request, jsonify
-from openai import OpenAI
 
 sop_validator_bp = Blueprint('sop_validator', __name__)
 
@@ -50,6 +49,7 @@ def sop_validator():
             
             # Call OpenAI API
             try:
+                from openai import OpenAI
                 client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
                 
                 response = client.chat.completions.create(

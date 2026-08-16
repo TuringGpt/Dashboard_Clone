@@ -25,8 +25,10 @@ import os
 import re
 import json
 import uuid
+import random
 import zipfile
 import tempfile
+import shutil
 from datetime import datetime
 
 import yaml
@@ -34,11 +36,23 @@ from flask import Blueprint, render_template, request, jsonify, abort
 
 graph_visualizer_bp = Blueprint('graph_visualizer', __name__)
 
-DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "graph_visualizer_data")
+# Store processed datasets OUTSIDE the application source tree. Writing a multi-MB
+# file inside the tree (e.g. under modules/) triggers the Werkzeug debug reloader
+# to restart the worker mid-request, which resets the in-flight upload connection
+# and surfaces in the browser as "Failed to fetch". Override with the
+# GRAPH_VISUALIZER_DATA_DIR env var; defaults to a dir in the system temp location.
+DATA_DIR = os.environ.get(
+    "GRAPH_VISUALIZER_DATA_DIR",
+    os.path.join(tempfile.gettempdir(), "graph_visualizer_data"),
+)
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # In-memory cache of processed datasets, keyed by dataset_id.
 _DATASETS = {}
+# Per-dataset table index: {dataset_id: {table_name: [node_keys]}}.
+# Built lazily on first /ids request so subsequent lookups are O(1) per table
+# instead of scanning all nodes.
+_TABLE_INDEX = {}
 
 # A curated palette of distinct colours. Assigned to tables in sorted order so the
 # same dataset always renders with the same colours across reloads.
@@ -61,6 +75,30 @@ def _normalize_pk(pk):
     if isinstance(pk, list):
         return tuple(pk)
     return pk
+
+
+def _normalize_email_join(ej):
+    """Normalize the email_join config to a dict or None.
+
+    Supports two YAML forms:
+      1. dict (preferred, fully generic):
+           email_join:
+             column: organizer_email
+             target_table: users
+             target_column: email
+      2. string (legacy shorthand, targets users.email implicitly):
+           email_join: organizer_email
+    Returns None if no email_join is configured.
+    """
+    if not ej:
+        return None
+    if isinstance(ej, str):
+        return {"column": ej, "target_table": "users", "target_column": "email"}
+    return {
+        "column": ej["column"],
+        "target_table": ej.get("target_table", "users"),
+        "target_column": ej.get("target_column", "email"),
+    }
 
 
 def _load_schema(yaml_text):
@@ -87,7 +125,7 @@ def _load_schema(yaml_text):
             "pk": pk,
             "columns": columns,
             "edges": edges,
-            "email_join": meta.get("email_join"),
+            "email_join": _normalize_email_join(meta.get("email_join")),
         }
 
     options = data.get("options", {}) or {}
@@ -98,6 +136,7 @@ def _load_schema(yaml_text):
         "options": {
             "max_field_len": int(options.get("max_field_len", 120)),
             "exclude_hubs": list(options.get("exclude_hubs", []) or []),
+            "noise_fields": list(options.get("noise_fields", []) or []),
         },
         "tables": tables,
         "hierarchy": [list(h) if not isinstance(h, dict) else h
@@ -173,12 +212,17 @@ def _clean(val):
 
 
 def _truncate(v, max_len):
+    """Truncate a value for display. Returns (truncated_str, full_str_or_None).
+
+    full_str is None when no truncation was needed, otherwise the original
+    untruncated value (so the client can show it in a popup on click).
+    """
     if v is None:
-        return ""
+        return "", None
     s = str(v)
     if len(s) > max_len:
-        return s[:max_len] + f"...(+{len(s) - max_len} chars)"
-    return s
+        return s[:max_len] + f"...(+{len(s) - max_len} chars)", s
+    return s, None
 
 
 def _extract_all_values(text):
@@ -230,11 +274,16 @@ def _extract_all_values(text):
 # SQL -> nodes + connections
 # ---------------------------------------------------------------------------
 
-def _parse_sql(sql_text, schema):
+def _parse_sql(sql_text, schema, from_path=False):
     """Parse the seed SQL using the YAML schema. Returns (nodes, row_counts).
 
-    nodes: dict key -> {table, pk, pk_display, label, fields, connections}
-    row_counts: dict table -> number of real rows
+    Single pass: builds nodes, collects real_id_sets, and defers conditional
+    edges + value-join edges until the end (when all real_id_sets are known).
+    This is 2x faster than the old 2-pass approach for large files.
+
+    By default sql_text is the full SQL string. Pass from_path=True and a file
+    path in sql_text to stream line-by-line instead — this avoids loading the
+    entire SQL file (which can be >1GB) into memory at once.
     """
     max_len = schema["options"]["max_field_len"]
     tables = schema["tables"]
@@ -244,85 +293,75 @@ def _parse_sql(sql_text, schema):
 
     # Sets to resolve conditional edges (only follow when target is a real row).
     real_id_sets = {t: set() for t in tables}      # table -> {pk_value}
-    email_map = {}                                  # email -> user pk (for email_join)
 
-    # First pass: collect every real primary-key value per table (so conditional
-    # edges can be resolved deterministically). We re-scan headers quickly.
-    # We do two passes over the file text: pass 1 fills real_id_sets, pass 2 builds
-    # nodes. This is simpler than deferring edges and handles email joins cleanly.
-    lines = sql_text.splitlines(keepends=False)
+    # Value-join maps: for each (target_table, target_column) that some table's
+    # email_join points at, map the target_column value -> pk_display of that row.
+    value_join_targets = set()   # {(target_table, target_column)}
+    for meta in tables.values():
+        ej = meta.get("email_join")
+        if ej:
+            value_join_targets.add((ej["target_table"], ej["target_column"]))
+    value_join_maps = {}  # {(target_table, target_column): {value: pk_display}}
 
-    def iter_rows():
-        """Yield (table, col_names, col_index, values) for every data tuple."""
-        cur_table = None
-        col_names = []
-        col_index = {}
-        it = iter(lines)
-        for line in it:
-            if line.startswith("INSERT INTO"):
-                m = HEADER_RE.match(line)
-                if not m:
-                    cur_table = None
-                    continue
-                tname = m.group(1)
-                if tname not in tables:
-                    cur_table = None
-                    continue
-                cur_table = tname
-                col_names = [c.strip().strip('"') for c in m.group(2).split(",")]
-                col_index = {name: i for i, name in enumerate(col_names)}
-                continue
-            if cur_table is None:
-                continue
-            stripped = line.lstrip()
-            if stripped == "" or stripped.startswith("--"):
-                continue
-            if not stripped.startswith("("):
-                continue
-            vals, ok = _extract_all_values(line)
-            if not ok:
-                buf = [line]
-                in_str, depth = _scan_balance(line, False, 0)
-                while in_str or depth > 0:
-                    try:
-                        nxt = next(it)
-                    except StopIteration:
-                        break
-                    buf.append(nxt)
-                    in_str, depth = _scan_balance(nxt, in_str, depth)
-                vals, ok = _extract_all_values("\n".join(buf))
-            if not ok or len(vals) < len(col_names):
-                continue
-            yield cur_table, col_names, col_index, vals
+    # Deferred edges: (node_key, edge_spec, fk_value) — resolved after pass 1
+    # completes, when all real_id_sets + value_join_maps are fully built.
+    deferred_conditional = []   # (node_key, edge_dict, fk_value)
+    deferred_value_joins = []   # (node_key, ej_config, join_value)
 
-    # Pass 1: real id sets + email map
-    for tname, col_names, col_index, vals in iter_rows():
-        meta = tables[tname]
-        pk = meta["pk"]
-        if isinstance(pk, tuple):
-            pk_parts = [vals[col_index[c]] for c in pk if c in col_index]
-            if any(p is None for p in pk_parts):
-                continue
-            real_id_sets[tname].add("|".join(pk_parts))
-        else:
-            if pk not in col_index:
-                continue
-            pk_val = vals[col_index[pk]]
-            if pk_val is None:
-                continue
-            real_id_sets[tname].add(pk_val)
-        if tname == "users" and "email" in col_index:
-            em = vals[col_index["email"]]
-            if isinstance(pk, tuple):
-                email_map[em] = "|".join(vals[col_index[c]] for c in pk)
-            else:
-                email_map[em] = vals[col_index[pk]]
+    if from_path:
+        # Stream line-by-line to avoid loading the entire SQL file into memory.
+        # (A 1GB+ dump read via .read()+splitlines() doubles memory and OOMs.)
+        def _line_iter():
+            with open(sql_text, "r", encoding="utf-8", errors="surrogateescape") as f:
+                for raw in f:
+                    yield raw.rstrip("\r\n")
+        it = _line_iter()
+    else:
+        it = iter(sql_text.splitlines(keepends=False))
 
-    # Pass 2: build nodes + connections
-    for tname, col_names, col_index, vals in iter_rows():
-        meta = tables[tname]
+    cur_table = None
+    col_names = []
+    col_index = {}
+    for line in it:
+        if line.startswith("INSERT INTO"):
+            m = HEADER_RE.match(line)
+            if not m:
+                cur_table = None
+                continue
+            tname = m.group(1)
+            if tname not in tables:
+                cur_table = None
+                continue
+            cur_table = tname
+            col_names = [c.strip().strip('"') for c in m.group(2).split(",")]
+            col_index = {name: i for i, name in enumerate(col_names)}
+            continue
+        if cur_table is None:
+            continue
+        stripped = line.lstrip()
+        if stripped == "" or stripped.startswith("--"):
+            continue
+        if not stripped.startswith("("):
+            continue
+        vals, ok = _extract_all_values(line)
+        if not ok:
+            buf = [line]
+            in_str, depth = _scan_balance(line, False, 0)
+            while in_str or depth > 0:
+                try:
+                    nxt = next(it)
+                except StopIteration:
+                    break
+                buf.append(nxt)
+                in_str, depth = _scan_balance(nxt, in_str, depth)
+            vals, ok = _extract_all_values("\n".join(buf))
+        if not ok or len(vals) < len(col_names):
+            continue
+
+        meta = tables[cur_table]
         pk = meta["pk"]
 
+        # --- compute pk_display + populate real_id_sets ---
         if isinstance(pk, tuple):
             pk_parts = [vals[col_index[c]] for c in pk if c in col_index]
             if any(p is None for p in pk_parts):
@@ -336,24 +375,38 @@ def _parse_sql(sql_text, schema):
                 continue
             pk_display = pk_val
 
-        key = f"{tname}||{pk_display}"
+        real_id_sets[cur_table].add(pk_display)
 
-        # Build truncated field dict (only this table's declared columns).
+        # --- populate value-join maps (if this table is a join target) ---
+        for (jt_table, jt_col) in value_join_targets:
+            if cur_table == jt_table and jt_col in col_index:
+                jv = vals[col_index[jt_col]]
+                if jv is not None and jv != "":
+                    key_pair = (jt_table, jt_col)
+                    value_join_maps.setdefault(key_pair, {})[jv] = pk_display
+
+        key = f"{cur_table}||{pk_display}"
+
+        # --- build truncated field dict ---
         declared = meta["columns"] or col_names
         fields = {}
+        full_fields = {}
         for c in declared:
             if c in col_index and col_index[c] < len(vals):
-                fields[c] = _truncate(vals[col_index[c]], max_len)
+                t, full = _truncate(vals[col_index[c]], max_len)
+                fields[c] = t
+                if full is not None:
+                    full_fields[c] = full
 
-        # Label: hint field if present, else pk.
-        hf = hint_fields.get(tname)
+        # --- label ---
+        hf = hint_fields.get(cur_table)
         label = fields.get(hf) if hf else None
         if not label:
             label = pk_display
         if len(str(label)) > 60:
             label = str(label)[:60] + "..."
 
-        # Connections (outgoing FK references from this row).
+        # --- connections: non-conditional edges now, conditional deferred ---
         connections = []
         for e in meta["edges"]:
             if e["column"] not in col_index:
@@ -361,43 +414,63 @@ def _parse_sql(sql_text, schema):
             fv = vals[col_index[e["column"]]]
             if fv is None or fv == "":
                 continue
-            tgt_table = e["to_table"]
             if e["conditional"]:
-                if tgt_table not in real_id_sets:
-                    continue
-                if fv not in real_id_sets[tgt_table]:
-                    continue
+                # Defer — we don't know yet if the target exists.
+                deferred_conditional.append((key, e, fv))
+                continue
+            tgt_table = e["to_table"]
             tgt_key = f"{tgt_table}||{fv}"
             connections.append({
                 "field": e["column"],
                 "to_table": tgt_table,
                 "to_pk": fv,
                 "target_key": tgt_key,
-                "conditional": e["conditional"],
+                "conditional": False,
             })
 
-        # email join (non-FK): a column whose value is an email matching users.email
-        ej = meta["email_join"]
-        if ej and ej in col_index:
-            em = vals[col_index[ej]]
-            if em and em in email_map:
-                uid = email_map[em]
-                connections.append({
-                    "field": ej,
-                    "to_table": "users",
-                    "to_pk": uid,
-                    "target_key": f"users||{uid}",
-                    "conditional": True,
-                })
+        # --- value-join (email_join): defer (target map may not be built yet) ---
+        ej = meta.get("email_join")
+        if ej and ej["column"] in col_index:
+            jv = vals[col_index[ej["column"]]]
+            if jv and jv != "":
+                deferred_value_joins.append((key, ej, jv))
 
         nodes[key] = {
-            "table": tname,
+            "table": cur_table,
             "pk": pk_display,
             "label": label,
             "fields": fields,
+            "full_fields": full_fields,
             "connections": connections,
         }
-        row_counts[tname] += 1
+        row_counts[cur_table] += 1
+
+    # --- resolve deferred conditional edges ---
+    for key, e, fv in deferred_conditional:
+        tgt_table = e["to_table"]
+        if tgt_table not in real_id_sets or fv not in real_id_sets[tgt_table]:
+            continue
+        nodes[key]["connections"].append({
+            "field": e["column"],
+            "to_table": tgt_table,
+            "to_pk": fv,
+            "target_key": f"{tgt_table}||{fv}",
+            "conditional": True,
+        })
+
+    # --- resolve deferred value-join (email_join) edges ---
+    for key, ej, jv in deferred_value_joins:
+        key_pair = (ej["target_table"], ej["target_column"])
+        vmap = value_join_maps.get(key_pair, {})
+        if jv in vmap:
+            tgt_pk = vmap[jv]
+            nodes[key]["connections"].append({
+                "field": ej["column"],
+                "to_table": ej["target_table"],
+                "to_pk": tgt_pk,
+                "target_key": f"{ej['target_table']}||{tgt_pk}",
+                "conditional": True,
+            })
 
     return nodes, row_counts
 
@@ -408,7 +481,7 @@ def _parse_sql(sql_text, schema):
 
 def _build_components(nodes, schema):
     """Assign each real node to a connected component. Returns:
-       key_to_graph, graph_members, graph_types, types_list
+       key_to_graph, graph_members, graph_flows, flows_list
     """
     exclude_hubs = set(schema["options"].get("exclude_hubs", []))
 
@@ -459,8 +532,8 @@ def _build_components(nodes, schema):
 
     # Type each graph by structural signature.
     hierarchy = schema["hierarchy"]
-    type_of = {}
-    types_list = []
+    flow_of = {}
+    flows_list = []
     sig_index = {}
 
     for gid, members in graph_members.items():
@@ -485,12 +558,16 @@ def _build_components(nodes, schema):
             nodes[k]["table"] for k in members
             if (nodes[k]["table"], nodes[k]["pk"]) not in is_child
         })
-        sig = (tuple(tables_present), tuple(root_tables), tuple(sorted(edge_types)))
+        # Flow signature: tables present + root tables only (NOT edge types).
+        # Including edge types caused visually-identical groups to split into
+        # separate flows (e.g. "pages with parent" vs "pages without parent"
+        # both look like just "pages" to the user).
+        sig = (tuple(tables_present), tuple(root_tables))
         if sig not in sig_index:
-            tid = len(types_list) + 1
+            tid = len(flows_list) + 1
             sig_index[sig] = tid
-            types_list.append({
-                "type_id": tid,
+            flows_list.append({
+                "flow_id": tid,
                 "tables": list(tables_present),
                 "root_tables": list(root_tables),
                 "edges": [list(e) for e in sorted(edge_types)],
@@ -498,12 +575,12 @@ def _build_components(nodes, schema):
                 "graph_ids": [],
             })
         tid = sig_index[sig]
-        type_of[gid] = tid
-        t = types_list[tid - 1]
+        flow_of[gid] = tid
+        t = flows_list[tid - 1]
         t["count"] += 1
         t["graph_ids"].append(gid)
 
-    return key_to_graph, graph_members, type_of, types_list, edges_followed
+    return key_to_graph, graph_members, flow_of, flows_list, edges_followed
 
 
 # ---------------------------------------------------------------------------
@@ -519,7 +596,34 @@ def _save_dataset(dataset_id, processed):
     os.makedirs(d, exist_ok=True)
     with open(os.path.join(d, "processed.json"), "w", encoding="utf-8") as f:
         json.dump(processed, f, ensure_ascii=False)
+    # Lightweight metadata for fast dataset listing — avoids loading the
+    # full processed.json (which can be 500MB+) just to show the cards.
+    meta = {
+        "id": dataset_id,
+        "name": processed.get("name", dataset_id),
+        "created_at": processed.get("created_at"),
+        "summary": processed.get("summary", {}),
+    }
+    with open(os.path.join(d, "meta.json"), "w", encoding="utf-8") as f:
+        json.dump(meta, f, ensure_ascii=False)
     _DATASETS[dataset_id] = processed
+    # Pre-build the per-table index so the first /ids request is instant.
+    idx = {}
+    for key, node in processed["nodes"].items():
+        idx.setdefault(node["table"], []).append(key)
+    _TABLE_INDEX[dataset_id] = idx
+
+
+def _load_meta(dataset_id):
+    """Load only the lightweight metadata for a dataset (name + summary)."""
+    path = os.path.join(_dataset_dir(dataset_id), "meta.json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return json.load(f)
+    except Exception:
+        return None
 
 
 def _load_dataset(dataset_id):
@@ -534,6 +638,22 @@ def _load_dataset(dataset_id):
     return processed
 
 
+def _get_table_index(dataset_id):
+    """Build (if needed) and return the per-table node index for a dataset.
+    Maps table_name -> list of node keys, so /ids doesn't scan all nodes.
+    """
+    if dataset_id in _TABLE_INDEX:
+        return _TABLE_INDEX[dataset_id]
+    pr = _load_dataset(dataset_id)
+    if not pr:
+        return {}
+    idx = {}
+    for key, node in pr["nodes"].items():
+        idx.setdefault(node["table"], []).append(key)
+    _TABLE_INDEX[dataset_id] = idx
+    return idx
+
+
 def _list_datasets():
     out = []
     if not os.path.isdir(DATA_DIR):
@@ -542,15 +662,49 @@ def _list_datasets():
         p = os.path.join(DATA_DIR, name, "processed.json")
         if not os.path.exists(p):
             continue
-        pr = _load_dataset(name)
-        if pr:
-            out.append({
-                "id": name,
-                "name": pr.get("name", name),
-                "created_at": pr.get("created_at"),
-                "summary": pr.get("summary", {}),
-            })
+        # Fast path: read the lightweight meta.json (~200 bytes) instead of
+        # loading the full processed.json (can be 500MB+).
+        meta = _load_meta(name)
+        if meta:
+            out.append(meta)
+        else:
+            # Fallback: full load (old datasets without meta.json).
+            pr = _load_dataset(name)
+            if pr:
+                out.append({
+                    "id": name,
+                    "name": pr.get("name", name),
+                    "created_at": pr.get("created_at"),
+                    "summary": pr.get("summary", {}),
+                })
     return out
+
+
+def _delete_dataset(dataset_id):
+    """Remove a dataset from the in-memory cache and from disk.
+
+    Returns True if anything was removed, False if the dataset was not found.
+    Validates dataset_id (hex chars only) to prevent path traversal.
+    """
+    if not re.fullmatch(r"[0-9a-fA-F]{1,64}", dataset_id or ""):
+        raise ValueError("Invalid dataset id")
+
+    removed = False
+    if dataset_id in _DATASETS:
+        del _DATASETS[dataset_id]
+        removed = True
+    if dataset_id in _TABLE_INDEX:
+        del _TABLE_INDEX[dataset_id]
+
+    d = _dataset_dir(dataset_id)
+    # Ensure we only remove a directory that actually lives under DATA_DIR.
+    if os.path.abspath(d) != os.path.join(
+            os.path.abspath(DATA_DIR), dataset_id):
+        raise ValueError("Invalid dataset path")
+    if os.path.isdir(d):
+        shutil.rmtree(d, ignore_errors=True)
+        removed = True
+    return removed
 
 
 # ---------------------------------------------------------------------------
@@ -562,9 +716,44 @@ def graph_visualizer():
     return render_template('graph_visualizer.html')
 
 
+@graph_visualizer_bp.route('/graph_visualizer/yaml_prompt', methods=['GET'])
+def yaml_prompt_route():
+    """Return the YAML schema generation prompt text for the popup copy button."""
+    prompt_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)),
+                              "prompts", "graph_visualizer")
+    candidates = [
+        os.path.join(prompt_dir, "yaml_generation_prompt.txt"),
+    ]
+    for path in candidates:
+        if os.path.isfile(path):
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    return jsonify({"status": "success", "prompt": f.read()})
+            except Exception as e:
+                return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "error", "message": "YAML prompt file not found"}), 404
+
+
 @graph_visualizer_bp.route('/graph_visualizer/datasets', methods=['GET'])
 def datasets_route():
     return jsonify({"status": "success", "datasets": _list_datasets()})
+
+
+@graph_visualizer_bp.route('/graph_visualizer/delete/<dataset_id>', methods=['POST'])
+def delete_route(dataset_id):
+    try:
+        removed = _delete_dataset(dataset_id)
+        if not removed:
+            return jsonify({"status": "error", "message": "Dataset not found"}), 404
+        return jsonify({
+            "status": "success",
+            "message": f"Dataset '{dataset_id}' deleted",
+            "dataset_id": dataset_id,
+        })
+    except ValueError as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"Delete failed: {e}"}), 500
 
 
 @graph_visualizer_bp.route('/graph_visualizer/schema/<dataset_id>', methods=['GET'])
@@ -588,7 +777,7 @@ def schema_route(dataset_id):
         "tables": tables,
         "colors": pr["colors"],
         "hint_fields": pr["hint_fields"],
-        "types": pr["types"],
+        "flows": pr["flows"],
         "options": pr["options"],
     })
 
@@ -603,7 +792,7 @@ def graphs_route(dataset_id):
         graphs.append({
             "graph_id": int(gid),
             "size": meta["size"],
-            "type_id": meta["type_id"],
+            "flow_id": meta["flow_id"],
             "tables": meta["tables"],
         })
     return jsonify({"status": "success", "graphs": graphs})
@@ -611,44 +800,159 @@ def graphs_route(dataset_id):
 
 @graph_visualizer_bp.route('/graph_visualizer/ids/<dataset_id>', methods=['GET'])
 def ids_route(dataset_id):
-    """List ids for a table (for the id dropdown). Optionally filter by graph type."""
+    """List ids for a table (for the id dropdown). Optionally filter by graph type.
+
+    Query params:
+      flow    - optional, filter by graph flow id
+      sample  - optional, return N random ids per table instead of all (default: 10)
+      limit   - optional, hard cap per table (default 2000, max 5000)
+      table   - table name, or "__all__" / empty to return ids from ALL tables
+    """
     pr = _load_dataset(dataset_id)
     if not pr:
         return jsonify({"status": "error", "message": "Dataset not found"}), 404
-    table = request.args.get("table")
-    type_id = request.args.get("type")
+    table = request.args.get("table") or ""
+    flow_id = request.args.get("flow") or request.args.get("type")
+    sample_n = int(request.args.get("sample", 0))
     limit = min(int(request.args.get("limit", 2000)), 5000)
 
-    if not table:
-        return jsonify({"status": "error", "message": "table is required"}), 400
+    all_tables = (table == "" or table == "__all__")
+
+    if not all_tables and table not in pr["tables"]:
+        return jsonify({"status": "error", "message": f"Unknown table: {table}"}), 400
 
     nodes = pr["nodes"]
     key_to_graph = pr["key_to_graph"]
     graphs = pr["graphs"]
-    type_filter = int(type_id) if type_id else None
+    flow_filter = int(flow_id) if flow_id else None
+
+    # Use the per-table index for O(1) lookup instead of scanning all nodes.
+    table_index = _get_table_index(dataset_id)
+
+    # When all_tables, collect ids per table so we can sample per table.
+    if all_tables:
+        target_tables = sorted(pr["tables"].keys())
+    else:
+        target_tables = [table]
 
     out = []
-    for key, node in nodes.items():
-        if node["table"] != table:
-            continue
-        gid = key_to_graph.get(key)
-        if gid is None:
-            continue
-        g = graphs[str(gid)]
-        if type_filter and g["type_id"] != type_filter:
-            continue
-        out.append({
+    for tbl in target_tables:
+        table_ids = []
+        for key in table_index.get(tbl, []):
+            gid = key_to_graph.get(key)
+            if gid is None:
+                continue
+            g = graphs[str(gid)]
+            if flow_filter and g["flow_id"] != flow_filter:
+                continue
+            node = nodes[key]
+            table_ids.append({
+                "pk": node["pk"],
+                "label": node["label"],
+                "table": tbl,
+                "graph_id": gid,
+                "graph_size": g["size"],
+                "flow_id": g["flow_id"],
+            })
+        # Sample per table when all_tables, or for the single table.
+        if sample_n > 0 and len(table_ids) > sample_n:
+            table_ids = random.sample(table_ids, sample_n)
+        elif limit and len(table_ids) > limit:
+            table_ids = table_ids[:limit]
+        out.extend(table_ids)
+
+    total = len(out)
+    out.sort(key=lambda x: (x.get("table", ""), x["pk"]))
+    return jsonify({
+        "status": "success",
+        "table": table,
+        "count": len(out),
+        "total": total,
+        "ids": out,
+    })
+
+
+@graph_visualizer_bp.route('/graph_visualizer/flow_sample/<dataset_id>', methods=['GET'])
+def flow_sample_route(dataset_id):
+    """Return a representative graph from a given flow (when no specific id is picked).
+
+    Picks the first member node of the first graph in the flow and returns the
+    full graph for that node — same shape as /graph.
+    """
+    pr = _load_dataset(dataset_id)
+    if not pr:
+        return jsonify({"status": "error", "message": "Dataset not found"}), 404
+
+    flow_id = request.args.get("flow")
+    if not flow_id:
+        return jsonify({"status": "error", "message": "flow is required"}), 400
+
+    try:
+        flow_id = int(flow_id)
+    except ValueError:
+        return jsonify({"status": "error", "message": "flow must be a number"}), 400
+
+    flows = pr.get("flows", [])
+    flow = next((f for f in flows if f["flow_id"] == flow_id), None)
+    if not flow:
+        return jsonify({"status": "error", "message": f"Flow {flow_id} not found"}), 404
+
+    graph_ids = flow.get("graph_ids", [])
+    if not graph_ids:
+        return jsonify({"status": "error", "message": "No graphs in this flow"}), 404
+
+    # Pick the first graph, then its first member node as the focal point.
+    gid = graph_ids[0]
+    members = pr["graphs"].get(str(gid), {}).get("members", [])
+    if not members:
+        return jsonify({"status": "error", "message": "Graph has no members"}), 404
+
+    start_key = members[0]
+    nodes = pr["nodes"]
+    if start_key not in nodes:
+        return jsonify({"status": "error", "message": "Member node not found"}), 404
+
+    table, node_id = start_key.split("||", 1)
+    max_nodes = min(int(request.args.get("max_nodes", 500)), 5000)
+    lock = request.args.get("lock", "0") in ("1", "true", "True")
+
+    if lock:
+        order, visited, edges = _lock_component(pr, start_key)
+    else:
+        order, visited, edges = _bfs_component(pr, start_key, max_nodes)
+
+    out_nodes = []
+    for k in order:
+        node = nodes[k]
+        out_nodes.append({
+            "id": k,
+            "table": node["table"],
             "pk": node["pk"],
             "label": node["label"],
-            "graph_id": gid,
-            "graph_size": g["size"],
-            "type_id": g["type_id"],
+            "fields": node["fields"],
+            "full_fields": node.get("full_fields", {}),
+            "is_focal": (k == start_key),
         })
-        if len(out) >= limit:
-            break
 
-    out.sort(key=lambda x: x["pk"])
-    return jsonify({"status": "success", "table": table, "count": len(out), "ids": out})
+    g = pr["graphs"][str(gid)]
+    return jsonify({
+        "status": "success",
+        "dataset_id": dataset_id,
+        "name": pr["name"],
+        "table": table,
+        "id": node_id,
+        "graph_id": gid,
+        "graph_size": g["size"],
+        "flow_id": g["flow_id"],
+        "rendered_count": len(out_nodes),
+        "truncated": len(order) < g["size"],
+        "locked": lock,
+        "colors": pr["colors"],
+        "hint_fields": pr["hint_fields"],
+        "tables": g["tables"],
+        "nodes": out_nodes,
+        "edges": edges,
+    })
 
 
 def _bfs_component(pr, start_key, max_nodes):
@@ -702,6 +1006,62 @@ def _bfs_component(pr, start_key, max_nodes):
     return order, visited, edges
 
 
+def _lock_component(pr, start_key):
+    """Return ONLY the focal node + its direct 1-hop neighbors (lock mode).
+
+    Only includes neighbors that are in the SAME connected component (i.e.
+    edges that were NOT dropped by exclude_hubs). This ensures lock mode
+    shows the same set of nodes that would appear in the full BFS view.
+
+    Same return signature as _bfs_component: (order, visited_set, edges).
+    """
+    nodes = pr["nodes"]
+    key_to_graph = pr["key_to_graph"]
+    gid = key_to_graph.get(start_key)
+    if gid is None:
+        return [start_key], {start_key}, []
+    # The component's members — only these nodes are reachable.
+    member_set = set(pr["graphs"][str(gid)]["members"])
+    visited = {start_key}
+    order = [start_key]
+
+    # Add direct neighbors that are in the same component (outgoing).
+    for conn in nodes[start_key]["connections"]:
+        tk = conn["target_key"]
+        if tk in member_set and tk not in visited:
+            visited.add(tk)
+            order.append(tk)
+    # Incoming: any node in the same component whose connection target == start_key.
+    for k in member_set:
+        if k == start_key or k in visited:
+            continue
+        for conn in nodes[k]["connections"]:
+            if conn["target_key"] == start_key:
+                visited.add(k)
+                order.append(k)
+                break
+
+    # Collect edges within the visited set (dedup by unordered pair + field).
+    edges = []
+    seen = set()
+    for k in visited:
+        for conn in nodes[k]["connections"]:
+            t = conn["target_key"]
+            if t not in visited:
+                continue
+            pair = tuple(sorted([k, t])) + (conn["field"],)
+            if pair in seen:
+                continue
+            seen.add(pair)
+            edges.append({
+                "source": k,
+                "target": t,
+                "field": conn["field"],
+                "to_table": conn["to_table"],
+            })
+    return order, visited, edges
+
+
 @graph_visualizer_bp.route('/graph_visualizer/graph/<dataset_id>', methods=['GET'])
 def graph_route(dataset_id):
     """Return the component containing (table, id), with nodes + edges for rendering."""
@@ -726,8 +1086,13 @@ def graph_route(dataset_id):
 
     g = pr["graphs"][str(gid)]
     max_nodes = min(int(request.args.get("max_nodes", 500)), 5000)
+    lock = request.args.get("lock", "0") in ("1", "true", "True")
 
-    order, visited, edges = _bfs_component(pr, start_key, max_nodes)
+    if lock:
+        # Lock mode: return ONLY the focal node + its direct 1-hop neighbors.
+        order, visited, edges = _lock_component(pr, start_key)
+    else:
+        order, visited, edges = _bfs_component(pr, start_key, max_nodes)
 
     out_nodes = []
     for k in order:
@@ -738,6 +1103,7 @@ def graph_route(dataset_id):
             "pk": node["pk"],
             "label": node["label"],
             "fields": node["fields"],
+            "full_fields": node.get("full_fields", {}),
             "is_focal": (k == start_key),
         })
 
@@ -749,9 +1115,10 @@ def graph_route(dataset_id):
         "id": node_id,
         "graph_id": gid,
         "graph_size": g["size"],
-        "type_id": g["type_id"],
+        "flow_id": g["flow_id"],
         "rendered_count": len(out_nodes),
         "truncated": len(visited) < g["size"],
+        "locked": lock,
         "colors": pr["colors"],
         "hint_fields": pr["hint_fields"],
         "tables": g["tables"],
@@ -813,15 +1180,16 @@ def upload_route():
                 return jsonify({"status": "error",
                                 "message": "No YAML schema file provided (upload one or include it in the zip)"}), 400
 
+            # Parse the YAML schema (fast). The SQL file is streamed line-by-line
+            # inside _parse_sql — this avoids reading a multi-GB dump into memory
+            # (which OOM-kills the process).
             schema = _load_schema(yaml_text)
+
             if not name:
                 name = schema["name"]
 
-            with open(sql_path, "r", encoding="utf-8", errors="surrogateescape") as f:
-                sql_text = f.read()
-
-            nodes, row_counts = _parse_sql(sql_text, schema)
-            key_to_graph, graph_members, type_of, types_list, edges_followed = _build_components(nodes, schema)
+            nodes, row_counts = _parse_sql(sql_path, schema, from_path=True)
+            key_to_graph, graph_members, flow_of, flows_list, edges_followed = _build_components(nodes, schema)
 
             colors = _assign_colors(schema["tables"])
 
@@ -839,7 +1207,7 @@ def upload_route():
                 tables_present = sorted({nodes[k]["table"] for k in members})
                 graphs_json[str(gid)] = {
                     "size": len(members),
-                    "type_id": type_of[gid],
+                    "flow_id": flow_of[gid],
                     "tables": tables_present,
                     "members": members,
                 }
@@ -855,7 +1223,7 @@ def upload_route():
                 "hierarchy": schema["hierarchy"],
                 "references": schema["references"],
                 "hint_fields": schema["hint_fields"],
-                "types": types_list,
+                "flows": flows_list,
                 "graphs": graphs_json,
                 "key_to_graph": key_to_graph,
                 "nodes": nodes,
@@ -864,7 +1232,7 @@ def upload_route():
                     "rows": len(nodes),
                     "rows_per_table": row_counts,
                     "graphs": len(graphs_json),
-                    "types": len(types_list),
+                    "flows": len(flows_list),
                     "edges_followed": edges_followed,
                     "largest_graph": max((g["size"] for g in graphs_json.values()), default=0),
                 },
